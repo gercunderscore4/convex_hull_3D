@@ -36,6 +36,7 @@ p3(n,:) = mean(p3(1:n-1,:));
 % CALCULATIONS
 l3 = convex_hull_3D(p3);
 
+%
 figure(1)
 clf
 
@@ -59,11 +60,12 @@ hold off
 %
 
 box off
+%
 
 % AUTOROTATION
 %
-secs = 2.5; % period of rotation, edit this
-rounds = 2; % number of revolutuions
+secs = 2; % period of rotation, edit this
+rounds = 1; % number of revolutuions
 msecs = 0.05;
 degs = msecs/secs * 360;
 eldegs = 45;
