@@ -1,11 +1,11 @@
 convex_hull_3D
 ==============
 
-Basic 3D convex hull algorithm, currently only works with convex sets.
+Basic 3D convex hull algorithm.
 Complexity O(n^2 log(n)) because there's a (merge/quick) sort (n log(n)) required per point (n).
 Most algorithms I've come across have been very complicated, this one seems pretty simple, I thought it up myself.
 
-How it works:
+How it works (simplified, assumes convex set, wosrt case approaches O(n^3)):
 
 (01)  Take a set of 3D convex points with no repetitions, p3.
 
@@ -41,8 +41,4 @@ How it works:
 
 (17)  Return the list of all triangles that form the convex hull, l3.
 
-There's no license on this because 3D convex hull algorithms are a common CS/Maths challenge, and because ... oh, crap, this means that those students could just look at this algorithm and, well, at least it only works for convex sets.
-
-Ahem.
-
-There's no license because I want to let people freely copy, modify, and improve the algorithm without any license stuff (and so that they might not put a license on it, so that I can copy it back).
+There's no license because I want to let people freely copy, modify, and improve it without any license stuff (and so that they might not put a license on it, so that I can copy it back).
