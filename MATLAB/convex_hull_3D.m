@@ -59,17 +59,15 @@ function l3 = convex_hull_3D(p3)
 		% sort ccw
 		[theta indices] = sort(theta, 'ascend');
 		ii_s = find(indices == ii, 1);
-		v3_s = v3(indices,:);
-
-		% inverse indices, 
-		% so that they they can point to 
-		% their counterparts on the unsorted lists
-		[temp indexes] = sort(indices,'ascend');
-		
+		% fan test list
 		t_s = ones(len_p3,1);
 		t_s(ii_s) = 0;
 		
-		disp(t_s(indexes)')
+		% DEBUG
+		%[temp indexes] = sort(indices,'ascend');
+		
+		% DEBUG
+		%disp(t_s(indexes)')
 		
 		% this is the tricky part
 		
@@ -96,16 +94,15 @@ function l3 = convex_hull_3D(p3)
 			cc = cc+1;
 			jn = mod(cc-1,len_p3)+1;
 		end
-		while cc <= cc_max && sum(t_s) > 2
+		while cc <= cc_max
 			% get points
 			pp = p3(indices(jp),:);
 			pc = p3(indices(jc),:);
 			pn = p3(indices(jn),:);
 			
-			t = dot( cross(pp-p,pn-p), pc-p );
+			t_s(jc) = 1*(  dot( cross(pp-p,pn-p), pc-p ) >= 0  );
 			
-			if t < 0
-				t_s(jc) = 0;
+			if t_s(jc) == 0
 				cc_max = cc + len_p3+1;
 				jp = jp;
 			else
@@ -121,7 +118,8 @@ function l3 = convex_hull_3D(p3)
 			end
 		end
 		
-		disp(t_s(indexes)')
+		% DEBUG
+		%disp(t_s(indexes)')
 		
 		% create triangles
 		
@@ -158,7 +156,8 @@ function l3 = convex_hull_3D(p3)
 			cc = cc+1;
 		end
 		
-		disp(t_s(indexes)')
+		% DEBUG
+		%disp(t_s(indexes)')
 		
 	end
 	
