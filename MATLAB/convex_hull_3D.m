@@ -72,11 +72,20 @@ function l3 = convex_hull_3D(p3)
 		% this is the tricky part
 		
 		% first, setup the counters
+		% jp
+		% jb
+		% jc
+		% jn == cc
 		% counting counter
 		cc = 0;
 		cc_max = len_p3+1;
+		% j_back
+		jb = mod(cc-1-1,len_p3)+1;
+		while t_s(jb) == 0
+			jb = mod(jb-1-1,len_p3)+1;
+		end
 		% j_previous
-		jp = mod(cc-1-1,len_p3)+1;
+		jp = mod(jb-1-1,len_p3)+1;
 		while t_s(jp) == 0
 			jp = mod(jp-1-1,len_p3)+1;
 		end
@@ -96,26 +105,74 @@ function l3 = convex_hull_3D(p3)
 		end
 		while cc <= cc_max
 			% get points
-			pp = p3(indices(jp),:);
+			pb = p3(indices(jb),:);
 			pc = p3(indices(jc),:);
 			pn = p3(indices(jn),:);
 			
-			t_s(jc) = 1*(  dot( cross(pp-p,pn-p), pc-p ) >= 0  );
+			t_s(jc) = 1*(  dot( cross(pb-p,pn-p), pc-p ) >= 0  );
 			
 			if t_s(jc) == 0
-				cc_max = cc + len_p3+1;
-				jp = jp;
-			else
-				jp = jc;
-			end
-			jc = jn;
-			% find next valid point
-			cc = cc+1;
-			jn = mod(cc-1,len_p3)+1;
-			while t_s(jn) == 0
+				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				
+				% move ahead
+				jc = jn;
+				% find next valid point
 				cc = cc+1;
 				jn = mod(cc-1,len_p3)+1;
+				while t_s(jn) == 0
+					cc = cc+1;
+					jn = mod(cc-1,len_p3)+1;
+				end
+				
+				t_b = 0;
+				t_c = 0;
+				while t_b == 0 || t_c == 0
+					
+					% check backwards
+					t_s(jb) = 1*(  dot( cross(p3(indices(jp),:)-p,p3(indices(jc),:)-p), p3(indices(jb),:)-p ) >= 0  );
+					t_b = t_s(jb);
+					% if failed
+					if t_b == 0
+						% move back
+						jb = jp;
+						jp = mod(jp-1-1,len_p3)+1;
+						while t_s(jp) == 0
+							jp = mod(jp-1-1,len_p3)+1;
+						end
+					end
+
+					% check forwards
+					t_s(jc) = 1*(  dot( cross(p3(indices(jb),:)-p,p3(indices(jn),:)-p), p3(indices(jc),:)-p ) >= 0  );
+					t_c = t_s(jc);
+					% if failed
+					if t_c == 0
+						% move ahead
+						jc = jn;
+						% find next valid point
+						cc = cc+1;
+						jn = mod(cc-1,len_p3)+1;
+						while t_s(jn) == 0
+							cc = cc+1;
+							jn = mod(cc-1,len_p3)+1;
+						end
+					end
+
+				end
+				
+				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			else
+				jp = jb;
+				jb = jc;
+				jc = jn;
+				% find next valid point
+				cc = cc+1;
+				jn = mod(cc-1,len_p3)+1;
+				while t_s(jn) == 0
+					cc = cc+1;
+					jn = mod(cc-1,len_p3)+1;
+				end
 			end
+			
 		end
 		
 		% DEBUG
