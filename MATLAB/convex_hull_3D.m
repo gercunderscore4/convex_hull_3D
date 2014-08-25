@@ -29,24 +29,8 @@ function l3 = convex_hull_3D(p3)
 			u1 = [1 0 0];
 		elseif v(2) == 0
 			u1 = [0 1 0];
-		elseif abs(v(1)) >= abs(v(2)) && abs(v(1)) >= abs(v(3))
-			if abs(v(2)) >= abs(v(3))
-				u1 = [v(2) -v(1) 0];
-			else
-				u1 = [v(3) 0 -v(1)];
-			end
-		elseif abs(v(2)) >= abs(v(1)) && abs(v(2)) >= abs(v(3))
-			if abs(v(1)) >= abs(v(3))
-				u1 = [v(2) -v(1) 0];
-			else
-				u1 = [0 v(3) -v(2)];
-			end
 		else
-			if abs(v(1)) >= abs(v(2))
-				u1 = [v(3) 0 -v(1)];
-			else
-				u1 = [0 v(3) -v(2)];
-			end
+			u1 = [v(2) -v(1) 0];
 		end
 		u2 = cross(v,u1);
 		
@@ -78,7 +62,7 @@ function l3 = convex_hull_3D(p3)
 		% jn == cc
 		% counting counter
 		cc = 0;
-		cc_max = len_p3+1;
+		cc_max = len_p3;
 		% j_back
 		jb = mod(cc-1-1,len_p3)+1;
 		while t_s(jb) == 0
@@ -104,14 +88,9 @@ function l3 = convex_hull_3D(p3)
 			jn = mod(cc-1,len_p3)+1;
 		end
 		while cc <= cc_max
-			% get points
-			pb = p3(indices(jb),:);
-			pc = p3(indices(jc),:);
-			pn = p3(indices(jn),:);
 			
-			t_s(jc) = 1*(  dot( cross(pb-p,pn-p), pc-p ) >= 0  );
-			
-			if t_s(jc) == 0
+			if dot( cross(p3(indices(jb),:)-p,p3(indices(jn),:)-p), p3(indices(jc),:)-p ) < 0
+				t_s(jc) = 0;
 				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				
 				% move ahead
@@ -161,6 +140,8 @@ function l3 = convex_hull_3D(p3)
 				
 				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			else
+				%t_s(jc) = 1;
+				
 				jp = jb;
 				jb = jc;
 				jc = jn;
