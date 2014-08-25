@@ -12,19 +12,19 @@ function l3 = convex_hull_3D(p3)
 
 	% find center
 	c3 = [min(p3(:,1))+max(p3(:,1)) min(p3(:,2))+max(p3(:,2)) min(p3(:,3))+max(p3(:,3))]/2;
-
+	
 	% outward vectors
-	v3 = bsxfun(@minus, p3, c3); % == p3 - c3;
+	v3 = bsxfun(@minus, p3, c3);
 	
 	for ii = 1:len_p3
 		
 		% for ease and fewer look-ups
+		p = p3(ii,:);
 		v = v3(ii,:);
 		
 		% get directional vectors
 		% don't bother with the case v3(ii,:) == [0 0 0]
 		% if that happens, something already went wrong
-		u3 = v/norm(v);
 		if v(1) == 0
 			u1 = [1 0 0];
 		elseif v(2) == 0
@@ -35,23 +35,20 @@ function l3 = convex_hull_3D(p3)
 			else
 				u1 = [v(3) 0 -v(1)];
 			end
-			u1 = u1/norm(u1);
 		elseif abs(v(2)) >= abs(v(1)) && abs(v(2)) >= abs(v(3))
 			if abs(v(1)) >= abs(v(3))
 				u1 = [v(2) -v(1) 0];
 			else
 				u1 = [0 v(3) -v(2)];
 			end
-			u1 = u1/norm(u1);
 		else
 			if abs(v(1)) >= abs(v(2))
 				u1 = [v(3) 0 -v(1)];
 			else
 				u1 = [0 v(3) -v(2)];
 			end
-			u1 = u1/norm(u1);
 		end
-		u2 = cross(u3,u1);
+		u2 = cross(v,u1);
 		
 		% get angles of points around v
 		theta = zeros(len_p3,1);
@@ -85,8 +82,8 @@ function l3 = convex_hull_3D(p3)
 		while t_s(jp) == 0
 			jp = mod(jp-1-1,len_p3)+1;
 		end
-		% j current
-		jj = mod(cc-1,len_p3)+1;
+		% j_current
+		jc = mod(cc-1,len_p3)+1;
 		while t_s(jj) == 0
 			cc = cc+1;
 			jj = mod(cc-1,len_p3)+1;
@@ -101,21 +98,21 @@ function l3 = convex_hull_3D(p3)
 		end
 		while cc <= cc_max && sum(t_s) > 2
 			% get points
-			vp = v3_s(jp,:);
-			vv = v3_s(jj,:);
-			vn = v3_s(jn,:);
+			pp = p3(indices(jp),:);
+			pc = p3(indices(jc),:);
+			pn = p3(indices(jn),:);
 			
-			t = dot( cross(vp-v,vn-v), vv-v );
+			t = dot( cross(pp-p,pn-p), pc-p );
 			
 			if t < 0
-				t_s(jj) = 0;
+				t_s(jc) = 0;
 				cc_max = cc + len_p3+1;
 				jp = jp;
 			else
-				jp = jj;
+				jp = jc;
 			end
-			jj = jn;
-			% find nex valid point
+			jc = jn;
+			% find next valid point
 			cc = cc+1;
 			jn = mod(cc-1,len_p3)+1;
 			while t_s(jn) == 0
@@ -130,7 +127,7 @@ function l3 = convex_hull_3D(p3)
 		
 		% counters
 		cc = 0;
-		cc_max = len_p3+1;
+		cc_max = len_p3-1;
 		% j_previous
 		jp = mod(cc-1-1,len_p3)+1;
 		while t_s(jp) == 0
@@ -138,18 +135,15 @@ function l3 = convex_hull_3D(p3)
 		end
 		while cc <= cc_max
 			
-			jj = mod(cc-1,len_p3)+1;
-			if t_s(jj) == 1
+			jc = mod(cc-1,len_p3)+1;
+			if t_s(jc) == 1
 				% record triangle
-				i2 = indices(jj);
+				i2 = indices(jc);
 				i3 = indices(jp);
 			
-				%{
-				len_l3 = len_l3+1;
-				l3(len_l3,:) = [ii i2 i3];
-				%}
 				if i2 < ii || i3 < ii
 					% already accounted for
+					t_s(jc) = 0;
 				elseif i2 < i3
 					len_l3 = len_l3+1;
 					l3(len_l3,:) = [ii i2 i3];
@@ -159,10 +153,13 @@ function l3 = convex_hull_3D(p3)
 				end
 				%
 				
-				jp = jj;
+				jp = jc;
 			end
 			cc = cc+1;
 		end
+		
+		disp(t_s(indexes)')
+		
 	end
 	
 	% cull to proper size
