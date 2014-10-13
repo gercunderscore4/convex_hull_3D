@@ -1,6 +1,9 @@
 convex_hull_3D
 ==============
 
+***IMPORTANT-ISH***
+There appears to be a logic error in the MATLAB code. It doesn't actually do anything wrong, it's just not written in a way that makes logical sense.
+
 Basic 3D convex hull algorithm.
 Complexity O(n^2 log(n)) because there's a (merge/quick) sort (n log(n)) required per point (n).
 Most algorithms I've come across have been very complicated, this one seems pretty simple, I thought it up myself.
