@@ -18,7 +18,8 @@ function l3 = convex_hull_3D(p3)
 	
 	ii = 0;
 	ii = find(p3(:,1)==max(p3(:,1)),1);
-		% cs marks which points form the convex set
+
+	% cs marks which points form the convex set
 	% 0 means not registered as convex (yet)
 	% 1 means registered, but not acted upon
 	% 2 means registered and acted upon
@@ -65,51 +66,51 @@ function l3 = convex_hull_3D(p3)
 		% this is the tricky part
 		
 		% first, setup the counters
-		% jp
-		% jb
-		% jc
-		% jn == cc
+		% j0
+		% j1
+		% j2
+		% j3 == cc
 		% counting counter
 		cc = 0;
 		cc_max = len_p3;
 		% j_back
-		jb = mod(cc-1-1,len_p3)+1;
-		while t_s(jb) == 0
-			jb = mod(jb-1-1,len_p3)+1;
+		j1 = imod(cc-1,len_p3);
+		while t_s(j1) == 0
+			j1 = imod(j1-1,len_p3);
 		end
 		% j_previous
-		jp = mod(jb-1-1,len_p3)+1;
-		while t_s(jp) == 0
-			jp = mod(jp-1-1,len_p3)+1;
+		j0 = imod(j1-1,len_p3);
+		while t_s(j0) == 0
+			j0 = imod(j0-1,len_p3);
 		end
 		% j_current
-		jc = mod(cc-1,len_p3)+1;
-		while t_s(jj) == 0
+		j2 = imod(cc,len_p3);
+		while t_s(j2) == 0
 			cc = cc+1;
-			jj = mod(cc-1,len_p3)+1;
+			j2 = imod(cc,len_p3);
 		end
 		% j_next
 		% cc tracks this one because it's the leading edge
 		cc = cc+1;
-		jn = mod(cc-1,len_p3)+1;
-		while t_s(jn) == 0
+		j3 = imod(cc,len_p3);
+		while t_s(j3) == 0
 			cc = cc+1;
-			jn = mod(cc-1,len_p3)+1;
+			j3 = imod(cc,len_p3);
 		end
 		while cc <= cc_max
 			
-			if dot( cross(p3(indices(jb),:)-p,p3(indices(jn),:)-p), p3(indices(jc),:)-p ) < 0
-				t_s(jc) = 0;
+			if dot( cross(p3(indices(j1),:)-p,p3(indices(j3),:)-p), p3(indices(j2),:)-p ) < 0
+				t_s(j2) = 0;
 				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				
 				% move ahead
-				jc = jn;
+				j2 = j3;
 				% find next valid point
 				cc = cc+1;
-				jn = mod(cc-1,len_p3)+1;
-				while t_s(jn) == 0
+				j3 = imod(cc,len_p3);
+				while t_s(j3) == 0
 					cc = cc+1;
-					jn = mod(cc-1,len_p3)+1;
+					j3 = imod(cc,len_p3);
 				end
 				
 				t_b = 0;
@@ -117,31 +118,31 @@ function l3 = convex_hull_3D(p3)
 				while t_b == 0 || t_c == 0
 					
 					% check backwards
-					t_s(jb) = 1*(  dot( cross(p3(indices(jp),:)-p,p3(indices(jc),:)-p), p3(indices(jb),:)-p ) >= 0  );
-					t_b = t_s(jb);
+					t_s(j1) = 1*(  dot( cross(p3(indices(j0),:)-p,p3(indices(j2),:)-p), p3(indices(j1),:)-p ) >= 0  );
+					t_b = t_s(j1);
 					% if failed
 					if t_b == 0
 						% move back
-						jb = jp;
-						jp = mod(jp-1-1,len_p3)+1;
-						while t_s(jp) == 0
-							jp = mod(jp-1-1,len_p3)+1;
+						j1 = j0;
+						j0 = imod(j0-1,len_p3);
+						while t_s(j0) == 0
+							j0 = imod(j0-1,len_p3);
 						end
 					end
 
 					% check forwards
-					t_s(jc) = 1*(  dot( cross(p3(indices(jb),:)-p,p3(indices(jn),:)-p), p3(indices(jc),:)-p ) >= 0  );
-					t_c = t_s(jc);
+					t_s(j2) = 1*(  dot( cross(p3(indices(j1),:)-p,p3(indices(j3),:)-p), p3(indices(j2),:)-p ) >= 0  );
+					t_c = t_s(j2);
 					% if failed
 					if t_c == 0
 						% move ahead
-						jc = jn;
+						j2 = j3;
 						% find next valid point
 						cc = cc+1;
-						jn = mod(cc-1,len_p3)+1;
-						while t_s(jn) == 0
+						j3 = imod(cc,len_p3);
+						while t_s(j3) == 0
 							cc = cc+1;
-							jn = mod(cc-1,len_p3)+1;
+							j3 = imod(cc,len_p3);
 						end
 					end
 
@@ -149,17 +150,17 @@ function l3 = convex_hull_3D(p3)
 				
 				%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 			else
-				%t_s(jc) = 1;
+				%t_s(j2) = 1;
 				
-				jp = jb;
-				jb = jc;
-				jc = jn;
+				j0 = j1;
+				j1 = j2;
+				j2 = j3;
 				% find next valid point
 				cc = cc+1;
-				jn = mod(cc-1,len_p3)+1;
-				while t_s(jn) == 0
+				j3 = imod(cc,len_p3);
+				while t_s(j3) == 0
 					cc = cc+1;
-					jn = mod(cc-1,len_p3)+1;
+					j3 = imod(cc,len_p3);
 				end
 			end
 			
@@ -174,21 +175,21 @@ function l3 = convex_hull_3D(p3)
 		cc = 0;
 		cc_max = len_p3-1;
 		% j_previous
-		jp = mod(cc-1-1,len_p3)+1;
-		while t_s(jp) == 0
-			jp = mod(jp-1-1,len_p3)+1;
+		j0 = imod(cc-1,len_p3);
+		while t_s(j0) == 0
+			j0 = imod(j0-1,len_p3);
 		end
 		while cc <= cc_max
 			
-			jc = mod(cc-1,len_p3)+1;
-			if t_s(jc) == 1
+			j2 = imod(cc,len_p3);
+			if t_s(j2) == 1
 				% record triangle
-				i2 = indices(jc);
-				i3 = indices(jp);
+				i2 = indices(j2);
+				i3 = indices(j0);
 			
 				if i2 < ii || i3 < ii
 					% already accounted for
-					%t_s(jc) = 0;
+					%t_s(j2) = 0;
 				elseif i2 < i3
 					len_l3 = len_l3+1;
 					l3(len_l3,:) = [ii i2 i3];
@@ -198,7 +199,7 @@ function l3 = convex_hull_3D(p3)
 				end
 				%
 				
-				jp = jc;
+				j0 = j2;
 			end
 			cc = cc+1;
 		end
