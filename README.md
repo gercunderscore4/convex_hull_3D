@@ -12,7 +12,6 @@ TODO:
 - Test new method for detecting polygonal facets.
 - Test C implementation.
 - Write C++ implementation.
-- Correct logic error in MATLAB code (that doesn't actually cause problems, but is still an error).
 
 KNOWN ISSUES:
 - The's a problem in dealing with non-triangular facets. I have a soluton, I just need to implement it.
