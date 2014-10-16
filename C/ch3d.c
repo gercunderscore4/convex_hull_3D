@@ -8,16 +8,16 @@
  *          And points in the middle of facets.
  * TO DO:   - ConvexHull3D is incomplete. Follow the description.
  *          - Figure out what to do with ConvexityTest, now that we're testing for normals.
- *          - Make all non-trivial memory allocation happen in the main algorithm, it'll save reallocating it.
- *          - And don't forget to group initialization for loops.
- *          - And mention all this in each function's description.
- *          - Need to write reallocation parts (look for Python "del" code).
  */
 
-#include <math.c>
-#include <time.c>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
 
 #define PI 3.14159
+
+#define EPSILON 1e-6
 
 #define TRUE  1
 #define FALSE 0
@@ -30,31 +30,31 @@
 #define EDGES    1
 #define FACETS   2
 
-/* void GeneratePoints(float* p, unsigned int count, int convexset)
+/* void GeneratePoints(float* p, unsigned int size, int convexset)
  * 
  * DESCRIPTION:
- *     Generates a set of count points. If convexset is TRUE, the points are a convex set.
+ *     Generates a set of size 3D points. If convexset is TRUE, the points are a convex set.
  * 
  * IMPORTANT:
  *     perform srand before this
- *     p MUST BE PRE-ALLOCATED with size 3*count
+ *     p MUST BE PRE-ALLOCATED with size 3*size
  *     p IS NOT FREED IN THIS FUNCTION
  * 
  * PARAMETERS:
  *     float*           p        array for storing points
- *     unsigned int     count    number of 3D points (actual size of p is count*3)
+ *     unsigned int     size     number of 3D points (actual size of p is 3*size)
  *
  * RETURNS:
  *     void
  */
-void GeneratePoints(float* p, unsigned int count, int convexset) {
+void GeneratePoints(float* p, unsigned int size, int convexset) {
 	float a1 = 0;
 	float a2 = 0;
 	unsigned int i = 0;
 	
 	if (convexset == TRUE) {
 		// convex set
-		for (i = 0; i < count; i++) {
+		for (i = 0; i < size; i++) {
 			a1 = 2*PI*((float) rand()/RAND_MAX);
 			a2 = asin(2*((float) rand()/RAND_MAX)-1);
 			p[i*3+0] = sin(a2)*cos(a1);
@@ -63,7 +63,7 @@ void GeneratePoints(float* p, unsigned int count, int convexset) {
 		}
 	} else {
 		// random points
-		for (i = 0; i < count; i++) {
+		for (i = 0; i < size; i++) {
 			p[i*3+0] = ((float) rand()/RAND_MAX);
 			p[i*3+1] = ((float) rand()/RAND_MAX);
 			p[i*3+2] = ((float) rand()/RAND_MAX);
@@ -71,22 +71,122 @@ void GeneratePoints(float* p, unsigned int count, int convexset) {
 	}
 }
 
-/* unsigned int RemoveRepetitions (float* p, unsigned int count)
+/* void PrintPoints(float* p, unsigned int lenp)
+ * 
+ * DESCRIPTION:
+ *     Prints an indexed list of all points.
+ * 
+ * IMPORTANT:
+ *     p MUST BE ALLOCATED with size 3*lenp
+ *     p IS NOT FREED IN THIS FUNCTION
+ * 
+ * PARAMETERS:
+ *     float*           p        array of 3D points
+ *     unsigned int     lenp     number of 3D points (actual size of p is 3*lenp)
+ *
+ * RETURNS:
+ *     void
+ */
+void PrintPoints(float* p, unsigned int lenp) {
+	unsigned int i = 0;	
+	
+	printf("POINTS\n");
+	printf("--------+---------------------------\n");
+	for (i = 0; i < lenp; i++) {
+		printf("%5u   |   %6.2f   %6.2f   %6.2f u\n", i, p[i*3+0], p[i*3+1], p[i*3+2]);
+	}
+	printf("\n");
+}
+
+/* void PrintResults(float* p, unsigned int lenp, unsigned int* l, unsigned int lenl, unsigned int leni)
+ * 
+ * DESCRIPTION:
+ *     Prints an indexed list of all points.
+ *     Prints a list of all vertex/edge/facet indices and points.
+ * 
+ * IMPORTANT:
+ *     p MUST BE ALLOCATED with size 3*lenp
+ *     l MUST BE ALLOCATED with size lenl*leni
+ *     p, l ARE NOT FREED IN THIS FUNCTION
+ * 
+ * PARAMETERS:
+ *     float*           p        array of 3D points
+ *     unsigned int     lenp     number of 3D points (actual size of p is 3*lenp)
+ *     float*           l        array of point indices
+ *     unsigned int     lenl     number of listed objects (actual size of p is 3*lenl*leni)
+ *     unsigned int     leni     number of points per list item (vertex/edge/facet)
+ *                               this determines whether the list if of vertices, edges or facets
+ *
+ * RETURNS:
+ *     void
+ */
+void PrintResults(float* p, unsigned int lenp, unsigned int* l, unsigned int lenl, unsigned int leni) {
+	unsigned int i = 0;	
+	unsigned int j = 0;
+	
+	// ... print points
+	PrintPoints(&p[0], lenp);
+	
+	if (leni == 1) {
+		printf("VERTICES\n");
+	} else if (leni == 2) {
+		printf("EDGES\n");
+	} else if (leni == 3) {
+		printf("FACETS\n");
+	} else {
+		printf("List contains %u unknown items of length %u.", lenl, leni);
+	}
+
+	// seperator
+	printf("--------+");
+	for (j = 0; j < leni; j++) {
+		printf("--------");
+	}
+	printf("---+");
+	for (j = 0; j < leni; j++) {
+		printf("---------");
+		printf("---------");
+		printf("---------");
+		printf("---+");	
+	}
+	printf("\n");
+	// list
+	for (i = 0; i < lenl; i++) {
+		// index
+		printf("%5u   |");
+		// indices
+		for (j = 0; j < leni; j++) {
+			printf("   %5u", l[i*leni+j]);
+		printf("   |");
+		// points
+		for (j = 0; j < leni; j++) {
+			if (l[i*leni+j] < lenp) {
+				printf("   %6.2f   %6.2f   %6.2f   |", p[l[i*leni+j]*3+0], p[l[i*leni+j]*3+1], p[l[i*leni+j]*3+2]);
+			} else {
+				break;
+			}
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+/* unsigned int RemoveRepetitions (float* p, unsigned int size)
  * 
  * DESCRIPTION:
  *     Removes repeated points (which would cause problems for the 3D convex hull algorithm).
  *     Returns new number of points.
  * 
  * IMPORTANT:
- *     p MUST BE PRE-ALLOCATED with size 3*count
+ *     p MUST BE PRE-ALLOCATED with size 3*size
  *     p IS NOT FREED IN THIS FUNCTION
  * 
  * PARAMETERS:
  *     float*           p        array for storing points
- *     unsigned int     count    number of 3D points (actual size of p is count*3)
+ *     unsigned int     size     number of 3D points (actual size of p is size*3)
  *
  * RETURNS:
- *     unsigned int              new value for count
+ *     unsigned int              new value for size
  */
 unsigned int RemoveRepetitions (float* p, unsigned int size) {
 	unsigned int* s1 = NULL;
@@ -99,21 +199,21 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 	unsigned int lim1 = 0;
 	unsigned int lim2 = 0;
 	
-	s1 = (unsigned int*) malloc(count*sizeof(unsigned int));
+	s1 = (unsigned int*) malloc(size*sizeof(unsigned int));
 	for (i = 0; i < size; i++) {
 		s1[i] = i;
 	}
 	
 	// s2 can be garbage, will be replaced
-	s2 = (unsigned int*) malloc(count*sizeof(unsigned int));
+	s2 = (unsigned int*) malloc(size*sizeof(unsigned int));
 	
 	// temp doesn't require data, you'll see later
 	
 	// merge(ish) sort
 	a = 1;
-	while (a < count*2) {
+	while (a < size*2) {
 		i = 0
-		while (i < count) {
+		while (i < size) {
 			lim1 = i+1*a < size ? i+1*a : size;
 			lim1 = i+2*a < size ? i+2*a : size;
 			i1 = i;
@@ -169,8 +269,8 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 	s2[s1[count-1]] = FALSE; // this point isn't covered in the loop
 
 	// repurpose a as new size-1
-	a = count-1;
-	for (i = count-1; i < count; i--) { // i < size still works, because i is unsigned, i.e. overflow
+	a = size-1;
+	for (i = size-1; i < size; i--) { // i < size still works, because i is unsigned, i.e. overflow
 		if (s2[i] == TRUE) {
 			// place point out of range
 			// really, just copy out-of-range point into it's place
@@ -181,7 +281,7 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 		}
 	}
 	count = a+1;
-	p = (float*) realloc(p, count*sizeof(float));
+	p = (float*) realloc(p, 3*size*sizeof(float));
 	free(s1);
 	free(s2);
 	return count;
@@ -294,7 +394,7 @@ int ConvexityTest (float* v, float* v_0, float* v_1, float* v_2) {
 		return test > 0 ? TRUE : FALSE;
 }
 
-/* void ConvexHull3D(float* p, unsigned int* len_p, float* l, unsigned int* len_l, unsigned int* len_i, int list_type, int debug)
+/* void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug)
  * 
  * DESCRIPTION:
  *     Removes repeated points from p.
@@ -305,51 +405,56 @@ int ConvexityTest (float* v, float* v_0, float* v_1, float* v_2) {
  *     If debug is TRUE, prints messages to console to help with debugging.
  * 
  * IMPORTANT:
- *     p MUST BE PRE-ALLOCATED with size 3*len_p
+ *     p MUST BE PRE-ALLOCATED with size 3*lenp
  *     l MUST BE UNALLOCATED, it is allocated in this function
  *     p, l are NOT FREED IN THIS FUNCTION
  * 
  * PARAMETERS:
- *     float*           p        array of 3D points, size 3*len_p
- *     unsigned int*    len_p    pointer to number of 3D points (actual size of p is 3*len_p)
+ *     float*           p        array of 3D points, size 3*lenp
+ *     unsigned int*    lenp_p   pointer to number of 3D points (actual size of p is 3*lenp)
  *                               it's a pointer so that it can change the original value
- *     unsigned int*    l        array of 3D points, size len_i*len_l
- *     unsigned int*    len_l    pointer to the length of the list (actual size of l is len_i*len_p)
+ *     unsigned int*    l        array of 3D points, size leni*lenl
+ *     unsigned int*    lenl_p   pointer to the length of the list (actual size of l is leni*len_p)
  *                               it's a pointer so that it can change the original value
- *     unsigned int*    len_i    pointer to the length of the list type
+ *     unsigned int*    leni_p   pointer to the length of the list type
  *                               1 if it's points, 2 if it's edges, 3 if it's facets
  *                               it's a pointer so that it can change the original value
  *
  * RETURNS:
  *     void
  * 
- * TODO:
- *     Find names for pointers to sizes. Find better names for sizes. Fix everything.
- * 
  * NOTES:
  *     While not yet implemented, I'm going to write in a section that calculates the normals of each test, and marks points that are in non-triangular facets.
  *     If a new facet is found to have marked points, it's normal is compared to a list of non-triangular facet normals.
  *     The list of points adds n memory, the list of facet normals adds 3*(2*V-4). Still linear.
  */
-void ConvexHull3D(float* p, unsigned int size, int facets, int debug) {
-	unsigned int* l = NULL;
-	unsigned int len_i = 0;
-	unsigned int len_l = 0;
+void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug) {
+	// lengths
+	unsigned int lenp = 0;
+	unsigned int leni = 0;
+	unsigned int lenl = 0;
 	
 	// queue
+	int* visited = NULL;
 	unsigned int* q = NULL;
 	unsigned int q1 = 0;
 	unsigned int q2 = 0;
-	int* visited = NULL;
 	
-	float c[3];
-	float vii[3];
+	// points and vectors
+	float c[3] = {0};
+	float vii[3] = {0};
+	float u0[3] = {0};
+	float u1[3] = {0};
 	float* v = NULL;
-	float* theta1 = NULL;
-	float* theta2 = NULL;
-	unsigned int* s1 = NULL;
-	unsigned int* s2 = NULL;
 	
+	// lists
+	float* theta = NULL;
+	unsigned int* s = NULL;
+	unsigned int* s2 = NULL;
+	int* t = NULL;
+	unsigned int tcount = 0;
+	
+	// indices
 	unsigned int i = 0;
 	unsigned int ii = 0;
 	unsigned int i9 = 0;
@@ -357,358 +462,425 @@ void ConvexHull3D(float* p, unsigned int size, int facets, int debug) {
 	unsigned int i1 = 0;
 	unsigned int i2 = 0;
 	
+	// ????
 	float tempf = 0;
 	
+	// bools for checks
 	int chk_f = FALSE;
 	int chk_b = FALSE;
 	
-	// get rid of pesky repetitions get rid of pesky repetitions
-	size = RemoveRepetitions(p3);
+	// get lengths
+	lenp = lenp_p[0];
+	leni = leni_p[0];
+	lenl = lenl_p[0];
 	
-	// confirm non-linear
-	// confirm non-planar
+	// get rid of pesky repetitions get rid of pesky repetitions
+	lenp = RemoveRepetitions(p);
+	lenp_p[0] = lenp;
+	
+	//
+	// POINT
+	//
+	if (lenp == 1) {
+		lenl = 1;
+		leni = 1;
+		l = (float*) malloc(leni*lenl*sizeof(float));
+		l[0] = 0;
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	//
+	// LINE
+	//
+	if (lenp == 2) {
+		if (list_type == VERTICES) {
+			lenl = 2;
+			leni = 1;
+		} else {
+			lenl = 1;
+			leni = 2;
+		}
+		l = (float*) malloc(leni*lenl*sizeof(float));
+		l[0] = 0;
+		l[1] = 1;
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	// NON-LINEARITY TEST
 	// vi = pi - p0
 	// for i:
 	// 	if v0 x vi != 0:
-	//		print 'non-linear'
-	//	if (v0 x v1) . vi != 0:
-	//		print 'non-planar'
+	//		non-linear
+	// 		break
+	// repurposeing chk_f, u0, u1
+	chk_f = TRUE;
+	u0[0] = p[1*3+0] - p[0*3+0];
+	u0[1] = p[1*3+1] - p[0*3+1];
+	u0[2] = p[1*3+2] - p[0*3+2];
+	for (i = 2; i < lenp; i++) {
+		u1[0] = p[i*3+0] - p[0*3+0];
+		u1[1] = p[i*3+1] - p[0*3+1];
+		u1[2] = p[i*3+2] - p[0*3+2];
+		// if the cross product is NOT ZERO
+		// then it's NON-LINEAR
+		if (abs(u0[1]*u1[2]-u1[1]*u0[2]) > EPSILON || 
+		    abs(u0[2]*u1[0]-u1[2]*u0[0]) > EPSILON || 
+		    abs(u0[0]*u1[1]-u1[0]*u0[1]) > EPSILON) {
+			chk_f = FALSE;
+			break;
+		}
+	}
 	
-	// for size < 5, it doesn't seem worth it to check for repeats
-	if (size == 1) {
-		// point
-		len_l = 1;
-		len_i = 1;
-		l = (float*) malloc(len_i*len_l*sizeof(float));
-	} else if (size == 2) {
-		// line
-		len_l = 1;
-		len_i = 2;
-		l = (float*) malloc(len_i*len_l*sizeof(float));
+	//
+	// LINE
+	//
+	if (chk_f == TRUE) {
+		if (list_type == VERTICES) {
+			lenl = 2;
+			leni = 1;
+		} else {
+			lenl = 1;
+			leni = 2;
+		}
+		l = (float*) malloc(leni*lenl*sizeof(float));
+
+		// find extremes
+		///////////////////////////////////////////////////////////////////////////////
 		l[0] = 0;
 		l[1] = 1;
-	} else if (size == 3) {
-		// triangle
-		if (facets == TRUE) {
-			len_l = 1;
-			len_i = 3;
-			l = (float*) malloc(len_i*len_l*sizeof(float));
+
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	//
+	// TRIANGLE
+	//
+	if (lenp == 3) {
+		if (list_type == VERTICES) {
+			lenl = 3;
+			leni = 1;
+			l = (float*) malloc(leni*lenl*sizeof(float));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 2;
-		} else {
-			len_l = 3;
-			len_i = 2;
-			l = (float*) malloc(len_i*len_l*sizeof(float));
-			l[len_i*0+0] = 0;
-			l[len_i*0+1] = 1;
-			l[len_i*1+0] = 0;
-			l[len_i*1+1] = 2;
-			l[len_i*2+0] = 1;
-			l[len_i*2+1] = 2;
-		}
-	} else if (size == 4) {
-		// quadralateral or tetrahedron
-		// frak it, simple solution works every time
-		if (facets == TRUE) {
-			len_l = 4;
-			len_i = 3;
-			l = (float*) malloc(len_i*len_l*sizeof(float));
-			l[ 0] = 0;
-			l[ 1] = 1;
-			l[ 2] = 2;
-			l[ 3] = 0;
-			l[ 4] = 1;
-			l[ 5] = 3;
-			l[ 6] = 0;
-			l[ 7] = 2;
-			l[ 8] = 3;
-			l[ 9] = 1;
-			l[10] = 2;
-			l[11] = 3;
-		} else {
-			len_l = 3;
-			len_i = 2;
-			l = (float*) malloc(len_i*len_l*sizeof(float));
+		} else if (list_type == EDGES) {
+			lenl = 3;
+			leni = 2;
+			l = (float*) malloc(leni*lenl*sizeof(float));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 0;
 			l[3] = 2;
 			l[4] = 1;
 			l[5] = 2;
-		}
-		/*
-		v1 = [p3[1][0]-p3[0][0], p3[1][1]-p3[0][1], p3[1][2]-p3[0][2]]
-		v2 = [p3[2][0]-p3[0][0], p3[2][1]-p3[0][1], p3[2][2]-p3[0][2]]
-		v3 = [p3[3][0]-p3[0][0], p3[3][1]-p3[0][1], p3[3][2]-p3[0][2]]
-		// check whether all are in the same plane
-		// if (v1 x v2) . v3 == 0 then same plane
-		if (v1[1]*v2[2]-v1[2]*v2[1])*v3[0] + (v1[2]*v2[0]-v1[0]*v2[2])*v3[1] + (v1[0]*v2[1]-v1[1]*v2[0])*v3[2] == 0:
-			// quadralateral
-			if facets == True:
-				len_l3 = 2
-				temp = math.atan2(
-					v1[0]*v3[0]+v1[1]*v3[1]+v1[2]*v3[2],
-					v2[0]*v3[0]+v2[1]*v3[1]+v2[2]*v3[2]);
-				if temp < -math.pi/2:
-					l3 = [[1,3,2],[1,0,2]]
-				if temp < 0:
-					l3 = [[0,3,2],[0,1,2]]
-				if temp < math.pi/2:
-					l3 = [[1,3,2],[1,0,2]]
-				else:
-					l3 = [[1,3,0],[1,2,0]]
-			} else {
-				# frak it, lines are cheap.
-				# to do this properly, do a 2D convex hull
-				len_l3 = 6
-				l3 = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]
 		} else {
-			if facets == True:
-				# tetrahedron
-				len_l3 = 4
-				l3 = [[0,1,2],[0,1,3],[0,2,3],[1,2,3]]
-			} else {
-				len_l = 6
-				l = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]
-			}
-		*/
-	} else {
-		// convex hull
+			lenl = 1; // from a pure maths perspective, this should be two (one for each side), but frak it
+			leni = 3;
+			l = (float*) malloc(leni*lenl*sizeof(float));
+			l[0] = 0;
+			l[1] = 1;
+			l[2] = 2;
+		}
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	// NON-PLANARITY TEST
+	//	if (v0 x v1) . vi != 0:
+	//		non-planar
+	// 		break
+	// repurposeing chk_f, u0, u1, c
+	chk_f = TRUE;
+	u0[0] = p[1*3+0] - p[0*3+0];
+	u0[1] = p[1*3+1] - p[0*3+1];
+	u0[2] = p[1*3+2] - p[0*3+2];
+	u1[0] = p[2*3+0] - p[0*3+0];
+	u1[1] = p[2*3+1] - p[0*3+1];
+	u1[2] = p[2*3+2] - p[0*3+2];
+	c[0]  = u0[1]*u1[2]-u1[1]*u0[2];
+	c[1]  = u0[2]*u1[0]-u1[2]*u0[0];
+	c[2]  = u0[0]*u1[1]-u1[0]*u0[1];
+	for (i = 3; i < lenp; i++) {
+		// if |vi.v(i)| > 0
+		// then it's NON-PLANAR 
+		tempf = (p[i*3+0] - p[0*3+0])*c[0] + p[i*3+1] - p[0*3+1]*c[1] +  p[i*3+2] - p[0*3+2]*c[2];
+		if (abs(tempf) > EPSILON) {
+			chk_f = FALSE;
+			break;
+		}
+	}
+	
+	//
+	// PLANE
+	//
+	if (chkf == TRUE) {
+		// needs a 2D convexity test
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		// Determine maximum possible number of edges (E) and facets (F)
-		// E <= V + (V-1) + (V-2) + ... + 0 = V*(V-1)/2
-		// F = 2 + E - V
-		// F <= 2 + V*(V-1)/2 - V
-		// F <= 2+V*(V-3)/2
-		// This does not account for breaking polygons into triangles (e.g. pyramid), ergo this is too low.
-		// But we also know that it can't possibly be be higher than:
-		// E <= V*V
-		// F = 2 + E - V
-		// F <= 2 + V*V - V
-		// F <= 2+V*(V-1)
-		// Then I did some maths and discovered that if you're building polyhedra from a minimal number of triangles:
-		// For V >= 4
-		// E = 3*V-6
-		// F = 2*V-4
-		// Holy frak, that simplifies things.
-		if (facets == TRUE) {
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	//
+	// TETRAHEDRON
+	//
+	if (lenp == 4) {
+		if (list_type == VERTICES) {
+			lenl = 4;
+			leni = 1;
+			l = (float*) malloc(leni*lenl*sizeof(float));
+			l[0] = 0;
+			l[1] = 1;
+			l[2] = 2;
+			l[3] = 3;
+		} else if (list_type == EDGES) {
+			lenl = 6;
+			leni = 2;
+			l = (float*) malloc(leni*lenl*sizeof(float));
+			l[ 0] = 0;
+			l[ 1] = 1;
+			l[ 2] = 0;
+			l[ 3] = 2;
+			l[ 4] = 0;
+			l[ 5] = 3;
+			l[ 6] = 1;
+			l[ 7] = 2;
+			l[ 8] = 1;
+			l[ 9] = 3;
+			l[10] = 2;
+			l[11] = 3;
+		} else {
+			len_l = 1;
 			len_i = 3;
-			len_l = len_i*(2*size-4);
 			l = (float*) malloc(len_i*len_l*sizeof(float));
-		} else {
-			len_i = 2;
-			len_l = len_i*(3*size-6);
-			l = (float*) malloc(len_i*len_l*sizeof(float));
+			l[0] = 0;
+			l[1] = 1;
+			l[2] = 2;
 		}
-		len_l = 0; // becomes incrementor for l
+		leni_p[0] = leni;
+		lenl_p[0] = lenl;
+		return;
+	}
+	
+	//
+	// CONVEX HULL
+	//
 		
-		// list of used variables
-		visited = (int*) malloc(size*sizeof(int));
-		// calculate approximate centroid and get first point
-		c[0] = p[0];
-		c[1] = p[1];
-		c[2] = p[2];
-		ii = 0; // index of cx_min, guarrantted to be part of the convex set
-		// 
-		for (i = 1; i < size; i++) {
-			// visited
-			visited[i] = UNVISITED;
-			// center
-			c[0] += p[i*3+0];
-			c[1] += p[i*3+1];
-			c[2] += p[i*3+2];
-			// find min x
-			if (p[i*3+0] < p[ii*3+0]) ii = i;
-		}
-		c[0] /= size;
-		c[1] /= size;
-		c[2] /= size;
-		
-		
-		// since I know that the queue will contain at most size points, I'll just us an array
-		q = (unsigned int*) malloc(size*sizeof(unsigned int)); // queue of points to be visited
-		// queue first point
-		q[q2++] = ii;
-		
-		// okay, let's allocate everything here
-		v = (float*) malloc(3*size*sizeof(float));
-		theta  = (float*) malloc(size*sizeof(float));
-		theta2 = (float*) malloc(size*sizeof(float));
-		s  = (unsigned int*) malloc(size*sizeof(unsigned int));
-		s2 = (unsigned int*) malloc(size*sizeof(unsigned int));
-		t  = (int*) malloc(size*sizeof(int));
-		
-		while (q1 < q2) {
-			ii = q[q1++];
+	// Determine maximum possible number of edges (E) and facets (F)
+	// E <= V + (V-1) + (V-2) + ... + 0 = V*(V-1)/2
+	// F = 2 + E - V
+	// F <= 2 + V*(V-1)/2 - V
+	// F <= 2+V*(V-3)/2
+	// Then I did some maths and discovered that if you're building polyhedra from a minimal number of triangles:
+	// E = 3*V-6
+	// F = 2*V-4
+	if (list_type == VERTICES) {
+		leni = 1;
+		lenl = lenp;
+		l = (float*) malloc(leni*lenl*sizeof(float));		
+	} else if (list_type == EDGES) {
+		leni = 2;
+		lenl = leni*(3*lenp-6);
+		l = (float*) malloc(leni*lenl*sizeof(float));
+	} else {
+		leni = 3;
+		lenl = leni*(2*lenp-4);
+		l = (float*) malloc(leni*lenl*sizeof(float));
+	}
+	lenl = 0; // becomes incrementor for l
+	
 
-			if (debug == TRUE) {
-				//print 'POINT LOOP',ii		
-			}
-			
-			// get direction vectors
-			// they need not be unit length, this might be wrong
-			vii[0] = p3[ii*3+0]-c3[0];
-			vii[1] = p3[ii*3+1]-c3[1];
-			vii[2] = p3[ii*3+2]-c3[2];
-			u0[0] = 0;
+	// allocate everything
+	visited = (int*) malloc(lenp*sizeof(int));
+	q = (unsigned int*) malloc(lenp*sizeof(unsigned int));
+	v = (float*) malloc(3*lenp*sizeof(float));
+	theta = (float*) malloc(lenp*sizeof(float));
+	s  = (unsigned int*) malloc(lenp*sizeof(unsigned int));
+	s2 = (unsigned int*) malloc(lenp*sizeof(unsigned int));
+	t  = (int*) malloc(lenp*sizeof(int));
+
+	// list of used variables
+	// calculate approximate centroid and get first point
+	c[0] = p[0];
+	c[1] = p[1];
+	c[2] = p[2];
+	// find index of the lowerest point p_x_min
+	ii = 0;
+	for (i = 1; i < size; i++) {
+		// visited
+		visited[i] = UNVISITED;
+		// center
+		c[0] += p[i*3+0];
+		c[1] += p[i*3+1];
+		c[2] += p[i*3+2];
+		// find min x
+		if (p[i*3+0] < p[ii*3+0]) ii = i;
+	}
+	c[0] /= size;
+	c[1] /= size;
+	c[2] /= size;
+	
+	
+	// push first point
+	visited[ii] = QUEUED;
+	q[q2++] = ii;
+	
+	// while the queue is not empty
+	while (q1 < q2) {
+		// pull point
+		ii = q[q1++];
+
+		if (debug == TRUE) {
+			//print 'POINT LOOP',ii		
+		}
+		
+		// get directional vectors
+		vii[0] = p[ii*3+0]-c3[0];
+		vii[1] = p[ii*3+1]-c3[1];
+		vii[2] = p[ii*3+2]-c3[2];
+		if (abs(vii[0]) < EPSILON) {
+			u0[0] = 1;
 			u0[1] = 0;
 			u0[2] = 0;
-			if (vii[0] == 0) {
-				u0[0] = 1;
-			} else if (vii[1] == 0) {
-				u0[1] = 1;
-			} else {
-				u0[0] = vii[1];
-				u0[1] = -vii[0];
-				tempf = sqrt(u0[0]*u0[0] + u0[1]*u0[1]);
-				u0[0] /= tempf;
-				u0[1] /= tempf;
-			}
-			// u1 = v x u0
-			u1[0] = v[1]*u0[2]-v[2]*u0[1];
-			u1[1] = v[2]*u0[0]-v[0]*u0[2];
-			u1[2] = v[0]*u0[1]-v[1]*u0[0];
-			tempf = sqrt(u1[0]*u1[0] + u1[1]*u1[1] + u1[2]*u1[2]);
-			u1[0] /= tempf;
-			u1[1] /= tempf;
-			u1[2] /= tempf;
-			
-			// create a list of vectors outward from v
-			// calculate their angle around v
-			// create a list of test results
-			for (i = 0; i < size; i++) {
-				v3[i*3+0] = p3[i*3+0] - p3[ii*3+0]
-				v3[i*3+1] = p3[i*3+1] - p3[ii*3+1]
-				v3[i*3+2] = p3[i*3+2] - p3[ii*3+2]
-				theta[i] = atan2(
-					u1[0]*v3[i][0] + u1[1]*v3[i][1] + u1[2]*v3[i][2],
-					u0[0]*v3[i][0] + u0[1]*v3[i][1] + u0[2]*v3[i][2]);
-				t[i] = TRUE;
-			}
-			// create list of indices of sorted theta
-			SortForIndices(&theta, &theta2, &s, &s1);
-			// and mark vii as failed
-			t[ii] = FALSE;
-							
-			if (debug == TRUE) {
-				//tv = ''
-				//ts = ''
-				//for k in xrange(size):
-				//	tv += '%4d' % k
-				//	ts += '%4d' % s[k]
-				//print ts + '    | ' + tv
-				//print ' ' + '-'*4*size + '---+' + '-'*4*size
-			}
-				
-			// create a set of indices:
-			//   i_???? = i9 # mod 10
-			// 	i_prev = i0
-			// 	i_curr = i1
-			// 	i_next = i2 # in and if are already terms
-			i0 = -1;
-			while (t[s[i0]] == FALSE) i0--;
-			i9 = i0-1;
-			while (t[s[i9]] == FALSE) i9--;
-			i1 = 0;
-			while (t[s[i1]] == FALSE) i1++;
-			i2 = i1+1
-			while (t[s[i2]] == FALSE) i2++;
-			// go through the whole list once
-			// check forward and backward at each failure
-			// (until success in both directions)
-			while (i1 < size) {
-				// test v_1
-				t[s[i1]] = ConvexityTest(&vii[0], &v[s[i0%size]*3], &v[s[i1%size]*3], &v[s[i2%size]*3])
-
-				if (t[s[i1%size]] == FALSE) {
-					// concavity detected
-					// increment forward
-					i1 = i2;
-					i2++;
-					while (t[s[i2%size]] == FALSE) i2++;
-					// check forward and backward until coast is clear
-					chk_f = FALSE;
-					chk_b = FALSE;
-					while (chk_f == FALSE || chk_b == FALSE) {
-						// check backward
-						chk_b = ConvexityTest(&vii[0], &v[s[i9%size]*3], &v[s[i0%size]*3], &v[s[i1%size]*3]);
-						if (chk_b == FALSE) {
-							t[s[i0%size]] = FALSE;
-							i0 = i9;
-							i9--;
-							while (t[s[i9%size]] == FALSE) i9--;
-						// check forward
-						chk_f = ConvexityTest(&vii[0], &v[s[i0%size]], &v[s[i1%size]], &v[s[i2%size]]);
-						if (chk_f == FALSE) {
-							t[s[i1%size]] = FALSE;
-							i1 = i2;
-							i2++;
-							while (t[s[i2%size]] == FALSE) i2++;
-						}
-					}
-				} else {
-					// everything is fine, continue on
-					i9 = i0;
-					i0 = i1;
-					i1 = i2;
-					i2++;
-					while (t[s[i2%size]] == FALSE) i2++;
-				}
-				if (debug == TRUE) {
-					//tv = ''
-					//ts = ''
-					//for k in xrange(size):
-					//	tv += '%4d' % t[k]
-					//	ts += '%4d' % t[s[k]]
-					//print ts + '    | ' + tv
-				}
+		} else if (abs(vii[1]) < EPSILON) {
+			u0[1] = 1;
+			u0[1] = 0;
+			u0[2] = 0;
+		} else {
+			u0[0] = vii[1];
+			u0[1] = -vii[0];
+			u0[2] = 0;
+			tempf = sqrt(u0[0]*u0[0] + u0[1]*u0[1]);
+			u0[0] /= tempf;
+			u0[1] /= tempf;
+		}
+		// u1 = v x u0
+		u1[0] = v[1]*u0[2]-v[2]*u0[1];
+		u1[1] = v[2]*u0[0]-v[0]*u0[2];
+		u1[2] = v[0]*u0[1]-v[1]*u0[0];
+		tempf = sqrt(u1[0]*u1[0] + u1[1]*u1[1] + u1[2]*u1[2]);
+		u1[0] /= tempf;
+		u1[1] /= tempf;
+		u1[2] /= tempf;
 		
-			// in this version, you can only create lines XOR create triangles
-			if (facets == TRUE) {
-				// create fan of points that passes
-				i1 = 0;
-				while (t[s[i1%size]] == FALSE) i1++;
-				i2 = i1+1
-				while (t[s[i2%size]] == FALSE) i2++;
-				while (i1 < size) {
-					// if a triangle contains a visited point, do not create
-					// and don't queue the other point in the triangle
-					// else queue both points
-					if (visited[s[i1%size]] != VISITED && visited[s[i2%size]] != VISITED) {
-						l[len_l*3+0] = ii;
-						l[len_l*3+1] = s[i1%size];
-						l[len_l*3+2] = s[i2%size];
-						len_l++;
-						if (visited[s[i1%size]] != QUEUED) {
-							visited[s[i1%size]] = QUEUED;
-							q[q2++] = s[i1%size];
-						}
-						if (visited[s[i2%size]] != QUEUED) {
-							visited[s[i2%size]] = QUEUED;
-							q[q2++] = s[i2%size];
-						}
-					}
-					i1 = i2;
-					i2++;
-					while (t[s[i2%size]] == FALSE) i2++;
+		// create a list of vectors outward from v
+		// calculate their angle around v
+		// create a list of test results
+		for (i = 0; i < lenp; i++) {
+			v3[i*3+0] = p3[i*3+0] - p3[ii*3+0]
+			v3[i*3+1] = p3[i*3+1] - p3[ii*3+1]
+			v3[i*3+2] = p3[i*3+2] - p3[ii*3+2]
+			theta[i] = atan2(
+				u1[0]*v3[i][0] + u1[1]*v3[i][1] + u1[2]*v3[i][2],
+				u0[0]*v3[i][0] + u0[1]*v3[i][1] + u0[2]*v3[i][2]);
+			t[i] = TRUE;
+		}
+		// create list of indices of sorted theta
+		SortForIndices(&theta, &s, &s1, lenp);
+		// and mark vii as failed
+		t[ii] = FALSE;
+		
+		// tcount is a failsafe
+		// it counts the number of failures
+		// if tcount >= lenp, there will be an infinite loop
+		// therefore break, and skip to the end
+		tcount = 1;
+						
+		if (debug == TRUE) {
+			//tv = ''
+			//ts = ''
+			//for k in xrange(size):
+			//	tv += '%4d' % k
+			//	ts += '%4d' % s[k]
+			//print ts + '    | ' + tv
+			//print ' ' + '-'*4*size + '---+' + '-'*4*size
+		}
+			
+		// create a set of sequential indices
+		// only count values that haven't failed the test
+		//  i_???? = i9
+		// 	i_prev = i0
+		// 	i_curr = i1
+		// 	i_next = i2
+		i0 = -1;
+		while (t[s[i0]] == FALSE) i0--;
+		i9 = i0-1;
+		while (t[s[i9]] == FALSE) i9--;
+		i1 = 0;
+		while (t[s[i1]] == FALSE) i1++;
+		i2 = i1+1
+		while (t[s[i2]] == FALSE) i2++;
+		// go through the whole list once
+		// check forward and backward at each failure
+		// (until success in both directions)
+		while (i1 < lenp) {
+			// test v_1
+			t[s[i1]] = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3])
+
+			if (t[s[i1%lenp]] == FALSE) {
+				// failsafe
+				tcount++;
+				if (tcount >= lenp) {
+					break;
+					break;
 				}
+				// concavity detected
+
+				// increment forward
+				i1 = i2;
+				i2++;
+				while (t[s[i2%lenp]] == FALSE) i2++;
+
+				// check forward and backward until coast is clear
+				chk_f = FALSE;
+				chk_b = FALSE;
+				while (chk_f == FALSE || chk_b == FALSE) {
+					// check backward
+					chk_b = ConvexityTest(&vii[0], &v[s[i9%lenp]*3], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3]);
+					if (chk_b == FALSE) {
+						t[s[i0%lenp]] = FALSE;
+						// failsafe
+						tcount++;
+						if (tcount >= lenp) {
+							break;
+							break;
+							break;
+						}
+						i0 = i9;
+						i9--;
+						while (t[s[i9%lenp]] == FALSE) i9--;
+					// check forward
+					chk_f = ConvexityTest(&vii[0], &v[s[i0%lenp]], &v[s[i1%lenp]], &v[s[i2%lenp]]);
+					if (chk_f == FALSE) {
+						t[s[i1%lenp]] = FALSE;
+						// failsafe
+						tcount++;
+						if (tcount >= lenp) {
+							break;
+							break;
+							break;
+						}
+						i1 = i2;
+						i2++;
+						while (t[s[i2%lenp]] == FALSE) i2++;
+					}
+				}
+				// concavity removed
 			} else {
-				// create lines of points that passed
-				for (i = 0; i < size; i++) {
-					// if a triangle contains a visited point, do not create
-					// and don't queue the other point in the triangle
-					// else queue both points
-					if (t[i] == TRUE && visited[i] != VISITED) {
-						l[len_l*3+0] = ii;
-						l[len_l*3+1] = i;
-						len_l += 1;
-						if (visited[i] != QUEUED) {
-							visited[i] = QUEUED;
-							q[q2++] = i;
-						}
-					}
-				}
+				// no concavity, continue
+				i9 = i0;
+				i0 = i1;
+				i1 = i2;
+				i2++;
+				while (t[s[i2%lenp]] == FALSE) i2++;
 			}
 			if (debug == TRUE) {
 				//tv = ''
@@ -718,14 +890,92 @@ void ConvexHull3D(float* p, unsigned int size, int facets, int debug) {
 				//	ts += '%4d' % t[s[k]]
 				//print ts + '    | ' + tv
 			}
-			visited[ii] = VISITED; // now mark point as off limits
 		}
+		
+		if (debug == TRUE) {
+			//tv = ''
+			//ts = ''
+			//for k in xrange(size):
+			//	tv += '%4d' % t[k]
+			//	ts += '%4d' % t[s[k]]
+			//print ts + '    | ' + tv
+		}
+		
+		// failsafe
+		tcount++;
+		if (tcount >= lenp) {
+			break;
+		}
+
+		// create vertices, edges, facets
+		if (list_type == VERTICES) {
+			// list this vertex, push the rest to the queue (they'll get added on their turn
+			l[lenl*1+0] = ii;
+			lenl ++;
+			for (i = 0; i < lenp; i++) {
+				// push all unvisited points to the queue
+				if (t[i] == TRUE && visited[i] == UNVISITED) {
+					visited[i] = QUEUED;
+					q[q2++] = i;
+				}
+			}
+		} else if (list_type == EDGES) {
+			// list edges
+			for (i = 0; i < lenp; i++) {
+				// if a point has been visited, the line already exisits
+				if (t[i] == TRUE && visited[i] != VISITED) {
+					l[lenl*2+0] = ii;
+					l[lenl*2+1] = i;
+					lenl ++;
+					if (visited[i] != QUEUED) {
+						visited[i] = QUEUED;
+						q[q2++] = i;
+					}
+				}
+			}
+		} else {
+			// create a triangle fan of points that pass
+			i1 = 0;
+			while (t[s[i1%lenp]] == FALSE) i1++;
+			i2 = i1+1
+			while (t[s[i2%lenp]] == FALSE) i2++;
+			while (i1 < lenp) {
+				// if a triangle contains a visited point, it's already in the list
+				if (visited[s[i1%lenp]] != VISITED && visited[s[i2%lenp]] != VISITED) {
+					l[lenl*3+0] = ii;
+					l[lenl*3+1] = s[i1%lenp];
+					l[lenl*3+2] = s[i2%lenp];
+					lenl++;
+					if (visited[s[i1%lenp]] != QUEUED) {
+						visited[s[i1%lenp]] = QUEUED;
+						q[q2++] = s[i1%lenp];
+					}
+					if (visited[s[i2%lenp]] != QUEUED) {
+						visited[s[i2%lenp]] = QUEUED;
+						q[q2++] = s[i2%lenp];
+					}
+				}
+				i1 = i2;
+				i2++;
+				while (t[s[i2%lenp]] == FALSE) i2++;
+			}
+		}
+		visited[ii] = VISITED; // now mark point as off limits
 	}
-	// resize, in case of non/sub-optimal convex set
-	if (facets == TRUE) {
-		//del l[len_l:2*2*size-4]
-	} else {
-		//del l[len_l:2*3*size-6]
-	}
-	return l;
+	
+	// free everything
+	free(visited);
+	free(q);
+	free(v);
+	free(v);
+	free(theta);
+	free(s);
+	free(s2);
+	free(t);
+	
+	// resize, in case of sub-optimal/non-convex set
+	l = (float*) realloc(leni*lenl*sizeof(float));
+	leni_p[0] = leni;
+	lenl_p[0] = lenl;
+	return;
 }
