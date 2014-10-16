@@ -1,11 +1,12 @@
 /* PROGRAM: ch3d.c
  * PURPOSE: Module for 3D convex hull algorithm
  * AUTHOR:  Geoffrey Card
- * DATE:    2014-10-13
+ * DATE:    2014-10-13 - 
  * NOTES:   Time: O(n^2*log(n))    Algorithm requires sort(n) for each n, hence n*n*log(n).
  *          Space: O(n)
  *          Untested.
- * TO DO:   
+ * TO DO:   Write 2D convex hull for planar case.
+ *          Test.
  */
 
 #include "ch3d.h"
@@ -17,7 +18,9 @@
  * 
  * PARAMETERS:
  *     float*           a        3D vector
+ * 
  *     float*           b        3D vector
+ * 
  *     float*           c        3D vector, receives result
  *
  * RETURNS:
@@ -39,6 +42,7 @@ void CrossProduct(float* a, float* b, float* c) {
  * 
  * PARAMETERS:
  *     float*           a        3D vector
+ * 
  *     float*           b        3D vector
  *
  * RETURNS:
@@ -81,7 +85,9 @@ void UnitVector(float* u) {
  * 
  * PARAMETERS:
  *     float*           a        3D vector
+ * 
  *     float*           b        3D vector
+ * 
  *     float*           c        3D vector
  *
  * RETURNS:
@@ -101,11 +107,11 @@ float TripleProduct(float* a, float* b, float* c) {
  * 
  * IMPORTANT:
  *     perform srand before this
- *     p MUST BE PRE-ALLOCATED with size 3*size
- *     p IS NOT FREED IN THIS FUNCTION
+ *     assumes p has been PRE-ALLOCATED
  * 
  * PARAMETERS:
  *     float*           p        array for storing points
+ * 
  *     unsigned int     size     number of 3D points (actual size of p is 3*size)
  *
  * RETURNS:
@@ -140,12 +146,9 @@ void GeneratePoints(float* p, unsigned int size, int convexset) {
  * DESCRIPTION:
  *     Prints an indexed list of all points.
  * 
- * IMPORTANT:
- *     p MUST BE ALLOCATED with size 3*lenp
- *     p IS NOT FREED IN THIS FUNCTION
- * 
  * PARAMETERS:
  *     float*           p        array of 3D points
+ * 
  *     unsigned int     lenp     number of 3D points (actual size of p is 3*lenp)
  *
  * RETURNS:
@@ -157,7 +160,7 @@ void PrintPoints(float* p, unsigned int lenp) {
 	printf("POINTS\n");
 	printf("--------+---------------------------\n");
 	for (i = 0; i < lenp; i++) {
-		printf("%5u   |   %6.2f   %6.2f   %6.2f u\n", i, p[i*3+0], p[i*3+1], p[i*3+2]);
+		printf("%5u   |   %6.2f   %6.2f   %6.2f\n", i, p[i*3+0], p[i*3+1], p[i*3+2]);
 	}
 	printf("\n");
 }
@@ -168,16 +171,15 @@ void PrintPoints(float* p, unsigned int lenp) {
  *     Prints an indexed list of all points.
  *     Prints a list of all vertex/edge/facet indices and points.
  * 
- * IMPORTANT:
- *     p MUST BE ALLOCATED with size 3*lenp
- *     l MUST BE ALLOCATED with size lenl*leni
- *     p, l ARE NOT FREED IN THIS FUNCTION
- * 
  * PARAMETERS:
  *     float*           p        array of 3D points
+ * 
  *     unsigned int     lenp     number of 3D points (actual size of p is 3*lenp)
+ * 
  *     float*           l        array of point indices
+ * 
  *     unsigned int     lenl     number of listed objects (actual size of p is 3*lenl*leni)
+ * 
  *     unsigned int     leni     number of points per list item (vertex/edge/facet)
  *                               this determines whether the list if of vertices, edges or facets
  *
@@ -189,7 +191,7 @@ void PrintResults(float* p, unsigned int lenp, unsigned int* l, unsigned int len
 	unsigned int j = 0;
 	
 	// ... print points
-	PrintPoints(&p[0], lenp);
+	PrintPoints(p, lenp);
 	
 	if (leni == 1) {
 		printf("VERTICES\n");
@@ -214,15 +216,19 @@ void PrintResults(float* p, unsigned int lenp, unsigned int* l, unsigned int len
 		printf("---+");	
 	}
 	printf("\n");
+	
 	// list
 	for (i = 0; i < lenl; i++) {
 		// index
 		printf("%5u   |", i);
+		
+		
 		// indices
 		for (j = 0; j < leni; j++) {
 			printf("   %5u", l[i*leni+j]);
 		}
 		printf("   |");
+
 		// points
 		for (j = 0; j < leni; j++) {
 			if (l[i*leni+j] < lenp) {
@@ -236,24 +242,27 @@ void PrintResults(float* p, unsigned int lenp, unsigned int* l, unsigned int len
 	printf("\n");
 }
 
-/* unsigned int RemoveRepetitions (float* p, unsigned int size)
+/* void RemoveRepetitions (float** p_p, unsigned int* lenp_p)
  * 
  * DESCRIPTION:
  *     Removes repeated points (which would cause problems for the 3D convex hull algorithm).
  *     Returns new number of points.
  * 
  * IMPORTANT:
- *     p MUST BE PRE-ALLOCATED with size 3*size
- *     p IS NOT FREED IN THIS FUNCTION
+ *     I'm quite sure that this has a MEMORY LEAK
+ *         but gcc give me errors when I free the memory
  * 
  * PARAMETERS:
- *     float*           p        array for storing points
- *     unsigned int     size     number of 3D points (actual size of p is size*3)
+ *     float*           p_p      pointer to array for storing points
+ * 
+ *     unsigned int     lenp_p   pointer to number of 3D points (actual size of p is lenp*3)
  *
  * RETURNS:
- *     unsigned int              new value for size
+ *     void
  */
-unsigned int RemoveRepetitions (float* p, unsigned int size) {
+void RemoveRepetitions (float** p_p, unsigned int* lenp_p) {
+	float* p = NULL;
+	unsigned int lenp = 0;
 	unsigned int* s1 = NULL;
 	unsigned int* s2 = NULL;
 	unsigned int* temp = NULL;
@@ -264,23 +273,25 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 	unsigned int lim1 = 0;
 	unsigned int lim2 = 0;
 	
-	s1 = (unsigned int*) malloc(size*sizeof(unsigned int));
-	for (i = 0; i < size; i++) {
+	// get points
+	p = *p_p;
+	lenp = *lenp_p;
+	
+	// initialize indices
+	s1 = (unsigned int*) malloc(lenp*sizeof(unsigned int));
+	for (i = 0; i < lenp; i++) {
 		s1[i] = i;
 	}
-	
 	// s2 can be garbage, will be replaced
-	s2 = (unsigned int*) malloc(size*sizeof(unsigned int));
+	s2 = (unsigned int*) malloc(lenp*sizeof(unsigned int));
 	
-	// temp doesn't require data, you'll see later
-	
-	// merge(ish) sort
+	// sort
 	a = 1;
-	while (a < size*2) {
+	while (a < lenp*2) {
 		i = 0;
-		while (i < size) {
-			lim1 = i+1*a < size ? i+1*a : size;
-			lim2 = i+2*a < size ? i+2*a : size;
+		while (i < lenp) {
+			lim1 = i+1*a < lenp ? i+1*a : lenp;
+			lim2 = i+2*a < lenp ? i+2*a : lenp;
 			i1 = i;
 			i2 = lim1;
 			while (i < lim2) {
@@ -303,10 +314,10 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 					s2[i] = s1[i2];
 					i2++;
 				} else if (p[s1[i1]*3+2] < p[s1[i2]*3+2]) { 
-					s2[i] = s1[i1];
 					i1++;
 				} else if (p[s1[i1]*3+2] > p[s1[i2]*3+2]) { 
 					s2[i] = s1[i2];
+					s2[i] = s1[i1];
 					i2++;
 				} else {
 					s2[i] = s1[i1];
@@ -316,26 +327,26 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 			}
 		}
 		a *= 2;
-		// exchange addresses, cool trick
+		// exchange addresses
 		temp = s1;
 		s1 = s2;
 		s2 = temp;
 	}
 
 	// repurpose s2 to mark repeats
-	// TRUE == repeat, i.e. remove this
-	for (i = 0; i < size-1; i++) {
+	// TRUE == repeat
+	for (i = 0; i < lenp-1; i++) {
 		if (p[s1[i]*3+0] == p[s1[i+1]*3+0] && p[s1[i]*3+1] == p[s1[i+1]*3+1] && p[s1[i]*3+2] == p[s1[i+1]*3+2]) {
 			s2[s1[i]] = TRUE;
 		} else {
 			s2[s1[i]] = FALSE;
 		}
 	}
-	s2[s1[size-1]] = FALSE; // this point isn't covered in the loop
+	s2[s1[lenp-1]] = FALSE; // this point isn't covered in the loop
 
-	// repurpose a as new size-1
-	a = size-1;
-	for (i = size-1; i < size; i--) { // i < size still works, because i is unsigned, i.e. overflow
+	// repurpose a as last valid index
+	a = lenp-1;
+	for (i = lenp-1; i < lenp; i--) {
 		if (s2[i] == TRUE) {
 			// place point out of range
 			// really, just copy out-of-range point into it's place
@@ -345,11 +356,17 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
 			a--;
 		}
 	}
-	size = a+1;
-	p = (float*) realloc(p, 3*size*sizeof(float));
+
 	free(s1);
 	free(s2);
-	return size;
+	s1 = NULL;
+	s2 = NULL;
+	temp = NULL;
+
+	lenp = a+1;
+	p = (float*) realloc(p, 3*lenp*sizeof(float));
+	*p_p = p;
+	*lenp_p = lenp;
 }
 
 /* void SortForIndices(float* l1, unsigned int* s1, unsigned int* s2, unsigned int size)
@@ -358,14 +375,15 @@ unsigned int RemoveRepetitions (float* p, unsigned int size) {
  *     Sorts s1 according to l1 (ascending). l1 remains unsorted.
  * 
  * IMPORTANT:
- *     l1, s1, s2 MUST BE PRE-ALLOCATED with size size
- *     l1, s1, s2 ARE NOT FREED IN THIS FUNCTION
- *     s1 MUST CONTAIN [0, 1, ..., size-1]
+ *     s1 MUST CONTAIN {0, 1, ..., size-1}
  * 
  * PARAMETERS:
  *     float*           l1       unsorted array (there used to be an l2, so I kept the name)
- *     unsigned int*    s1       indices, [0, 1, ..., size-1]
+ * 
+ *     unsigned int*    s1       indices, {0, 1, ..., size-1}
+ * 
  *     unsigned int*    s2       empty list (garbage OK)
+ * 
  *     unsigned int     size     size of l1, s1, s2
  *
  * RETURNS:
@@ -421,12 +439,13 @@ void SortForIndices (float* l1, unsigned int* s1, unsigned int* s2, unsigned int
  *     Checks whether v1 is above, in, or below the plane of v0 and v2: v1 . (v0 x v2) > 0
  *     If it's in the plane, it checks whether v1 is farther away from v than the line between v0 and v2: 
  * 
- * IMPORTANT:
- * 
  * PARAMETERS:
  *     float*           v        3D vector, vii - c (if you don't understand that, read the convex hull algorithm)
+ * 
  *     float*           v0       3D vector
+ * 
  *     float*           v1       3D vector
+ * 
  *     float*           v2       3D vector
  *
  * RETURNS:
@@ -467,7 +486,7 @@ unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2) {
 	}
 }
 
-/* void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug)
+/* void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug)
  * 
  * DESCRIPTION:
  *     Removes repeated points from p.
@@ -478,32 +497,32 @@ unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2) {
  *     If debug is TRUE, prints messages to console to help with debugging.
  * 
  * IMPORTANT:
- *     p MUST BE PRE-ALLOCATED with size 3*lenp
- *     l MUST BE UNALLOCATED, it is allocated in this function
- *     p, l are NOT FREED IN THIS FUNCTION
+ *     Planar sets are not yet implemented.
+ *     Not tested beyond triganles.
  * 
  * PARAMETERS:
- *     float*           p        array of 3D points, size 3*lenp
+ *     float**          p_p      pointer to array of 3D points, size 3*lenp
+ * 
  *     unsigned int*    lenp_p   pointer to number of 3D points (actual size of p is 3*lenp)
  *                               it's a pointer so that it can change the original value
- *     unsigned int*    l        array of 3D points, size leni*lenl
+ * 
+ *     unsigned int**   l_p      point to array that receives array of indices, size lenl*leni
+ * 
  *     unsigned int*    lenl_p   pointer to the length of the list (actual size of l is leni*len_p)
  *                               it's a pointer so that it can change the original value
+ * 
  *     unsigned int*    leni_p   pointer to the length of the list type
  *                               1 if it's points, 2 if it's edges, 3 if it's facets
  *                               it's a pointer so that it can change the original value
  *
  * RETURNS:
  *     void
- * 
- * NOTES:
- *     While not yet implemented, I'm going to write in a section that calculates the normals of each test, and marks points that are in non-triangular facets.
- *     If a new facet is found to have marked points, it's normal is compared to a list of non-triangular facet normals.
- *     The list of points adds n memory, the list of facet normals adds 3*(2*V-4). Still linear.
  */
-void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug) {
-	// lengths
+void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug) {
+	// arrays and lengths
+	float* p = NULL;
 	unsigned int lenp = 0;
+	unsigned int* l = NULL;
 	unsigned int leni = 0;
 	unsigned int lenl = 0;
 	
@@ -545,25 +564,32 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	unsigned int chk1 = 0;
 	unsigned int chk2 = 0;
 	
-	// get lengths
-	lenp = lenp_p[0];
-	leni = leni_p[0];
-	lenl = lenl_p[0];
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: BEGIN\n");
 	
+	// get points and lengths
+	p = *p_p;
+	lenp = *lenp_p;
+	leni = *leni_p;
+	lenl = *lenl_p;
+	
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: RemoveRepetitions\n");
 	// get rid of pesky repetitions get rid of pesky repetitions
-	lenp = RemoveRepetitions(p, lenp);
-	lenp_p[0] = lenp;
-	
+	RemoveRepetitions(&p, &lenp);
+	*p_p = p;
+	*lenp_p = lenp;
+
 	//
 	// POINT
 	//
 	if (lenp == 1) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Point\n");
 		lenl = 1;
 		leni = 1;
-		l = (float*) malloc(leni*lenl*sizeof(float));
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 		l[0] = 0;
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
@@ -571,6 +597,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	// LINE
 	//
 	if (lenp == 2) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Line\n");
 		if (list_type == VERTICES) {
 			lenl = 2;
 			leni = 1;
@@ -578,21 +605,23 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 			lenl = 1;
 			leni = 2;
 		}
-		l = (float*) malloc(leni*lenl*sizeof(float));
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 		l[0] = 0;
 		l[1] = 1;
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Non-Linearity Test\n");
 	// NON-LINEARITY TEST
 	// vi = pi - p0
 	// for i:
 	// 	if v0 x vi != 0:
 	//		non-linear
 	// 		break
-	// repurposeing chk_f, u0, u1
+	// repurposeing chk1, u0, u1
 	chk1 = TRUE;
 	u0[0] = p[1*3+0] - p[0*3+0];
 	u0[1] = p[1*3+1] - p[0*3+1];
@@ -612,9 +641,10 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	}
 	
 	//
-	// LINE
+	// LINEAR
 	//
 	if (chk1 == TRUE) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Linear\n");
 		if (list_type == VERTICES) {
 			lenl = 2;
 			leni = 1;
@@ -622,15 +652,37 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 			lenl = 1;
 			leni = 2;
 		}
-		l = (float*) malloc(leni*lenl*sizeof(float));
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 
 		// find extremes
-		///////////////////////////////////////////////////////////////////////////////
-		l[0] = 0;
-		l[1] = 1;
-
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		// repurposing q1, q2 as indices for extremes
+		// repurposing c[0], c[1] as values of extremes
+		q1 = 0;
+		c[0] = 0;
+		q2 = 1;
+		c[1] = DotProduct(u0, u0);
+		for (i = 2; i < lenp; i++) {
+			u1[0] = p[i*3+0] - p[0*3+0];
+			u1[1] = p[i*3+1] - p[0*3+1];
+			u1[2] = p[i*3+2] - p[0*3+2];
+			// get relative position
+			tempf = DotProduct(u0, u1);
+			if (tempf < c[0]) {
+				// if farthest negative
+				q1 = i;
+				c[0] = tempf;
+			} else if (tempf > c[1]) {
+				// if farthest forward
+				q2 = i;
+				c[1] = tempf;
+			}
+		}
+		
+		l[0] = q1;
+		l[1] = q2;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
@@ -638,17 +690,18 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	// TRIANGLE
 	//
 	if (lenp == 3) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Triangle\n");
 		if (list_type == VERTICES) {
 			lenl = 3;
 			leni = 1;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 2;
 		} else if (list_type == EDGES) {
 			lenl = 3;
 			leni = 2;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 0;
@@ -658,21 +711,23 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		} else {
 			lenl = 1; // from a pure maths perspective, this should be two (one for each side), but frak it
 			leni = 3;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 2;
 		}
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Non-Planarity Test\n");
 	// NON-PLANARITY TEST
 	//	if (v0 x v1) . vi != 0:
 	//		non-planar
 	// 		break
-	// repurposeing chk_f, u0, u1, c
+	// repurposeing chk1, u0, u1, c
 	chk1 = TRUE;
 	u0[0] = p[1*3+0] - p[0*3+0];
 	u0[1] = p[1*3+1] - p[0*3+1];
@@ -697,11 +752,13 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	// PLANE
 	//
 	if (chk1 == TRUE) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Planar\n");
 		// needs a 2D convexity test
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
@@ -709,10 +766,11 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	// TETRAHEDRON
 	//
 	if (lenp == 4) {
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Tetrahedron\n");
 		if (list_type == VERTICES) {
 			lenl = 4;
 			leni = 1;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 2;
@@ -720,7 +778,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		} else if (list_type == EDGES) {
 			lenl = 6;
 			leni = 2;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[ 0] = 0;
 			l[ 1] = 1;
 			l[ 2] = 0;
@@ -736,19 +794,21 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		} else {
 			lenl = 1;
 			leni = 3;
-			l = (float*) malloc(leni*lenl*sizeof(float));
+			l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 			l[0] = 0;
 			l[1] = 1;
 			l[2] = 2;
 		}
-		leni_p[0] = leni;
-		lenl_p[0] = lenl;
+		*leni_p = leni;
+		*lenl_p = lenl;
+		*l_p = l;
 		return;
 	}
 	
 	//
 	// CONVEX HULL
 	//
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: Convex Hull\n");
 		
 	// Determine maximum possible number of edges (E) and facets (F)
 	// E <= V + (V-1) + (V-2) + ... + 0 = V*(V-1)/2
@@ -761,15 +821,15 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	if (list_type == VERTICES) {
 		leni = 1;
 		lenl = lenp;
-		l = (float*) malloc(leni*lenl*sizeof(float));		
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));		
 	} else if (list_type == EDGES) {
 		leni = 2;
 		lenl = leni*(3*lenp-6);
-		l = (float*) malloc(leni*lenl*sizeof(float));
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 	} else {
 		leni = 3;
 		lenl = leni*(2*lenp-4);
-		l = (float*) malloc(leni*lenl*sizeof(float));
+		l = (unsigned int*) malloc(leni*lenl*sizeof(unsigned int));
 	}
 	lenl = 0; // becomes incrementor for l
 	
@@ -782,7 +842,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	s  = (unsigned int*) malloc(lenp*sizeof(unsigned int));
 	s2 = (unsigned int*) malloc(lenp*sizeof(unsigned int));
 	t  = (unsigned int*) malloc(lenp*sizeof(unsigned int));
-	n = (float*) malloc(3*lenp*sizeof(float));
+	n = (float*) malloc(3*(2*lenp-4)*sizeof(float));
 
 	// list of used variables
 	// calculate approximate centroid and get first point
@@ -808,16 +868,20 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	
 	// push first point
 	visited[ii] = QUEUED;
+	q1 = 0;
+	q2 = 0;
 	q[q2++] = ii;
+	
+	// set list of normals, n, as empty
+	lenn1 = 0;
+	lenn2 = 0;
 	
 	// while the queue is not empty
 	while (q1 < q2) {
 		// pull point
 		ii = q[q1++];
 
-		if (debug == TRUE) {
-			//print 'POINT LOOP',ii		
-		}
+		if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: POINT LOOP %u\n", ii);
 		
 		// get directional vectors
 		vii[0] = p[ii*3+0] - c[0];
@@ -868,14 +932,26 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		// therefore break, and skip to the end
 		tcount = 1;
 					
-		if (debug == TRUE) {
-			//tv = ''
-			//ts = ''
-			//for k in xrange(size):
-			//	tv += '%4d' % k
-			//	ts += '%4d' % s[k]
-			//print ts + '    | ' + tv
-			//print ' ' + '-'*4*size + '---+' + '-'*4*size
+		if (debug == TRUE) 	{
+			printf("DEBUG: ConvexHull3D: POINT LOOP %u\n", ii);
+			for (i = 0; i < lenp; i++) {
+				printf(" %4d", i);
+			}
+			printf("    | ");
+			for (i = 0; i < lenp; i++) {
+				printf(" %4d", s[i]);
+			}
+			printf("\n");
+			// separator
+			printf(" ");
+			for (i = 0; i < lenp; i++) {
+				printf("----");
+			}
+			printf("---+");
+			for (i = 0; i < lenp; i++) {
+				printf("----");
+			}
+			printf("\n");
 		}
 			
 		// create a set of sequential indices
@@ -897,7 +973,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		// (until success in both directions)
 		while (i1 < lenp) {
 			// test v_1
-			t[s[i1]] = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
+			t[s[i1]] = ConvexityTest(vii, &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
 
 			if (t[s[i1%lenp]] == CONCAVE) {
 				// failsafe
@@ -918,7 +994,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 				chk2 = CONCAVE;
 				while (chk1 == CONCAVE || chk2 == CONCAVE) {
 					// check backward
-					chk1 = ConvexityTest(&vii[0], &v[s[i9%lenp]*3], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3]);
+					chk1 = ConvexityTest(vii, &v[s[i9%lenp]*3], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3]);
 					if (chk1 == CONCAVE) {
 						t[s[i0%lenp]] = CONCAVE;
 						// failsafe
@@ -933,7 +1009,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 						while (t[s[i9%lenp]] == CONCAVE) i9--;
 					}
 					// check forward
-					chk2 = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
+					chk2 = ConvexityTest(vii, &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
 					if (chk2 == CONCAVE) {
 						t[s[i1%lenp]] = CONCAVE;
 						// failsafe
@@ -958,22 +1034,28 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 				while (t[s[i2%lenp]] == CONCAVE) i2++;
 			}
 			if (debug == TRUE) {
-				//tv = ''
-				//ts = ''
-				//for k in xrange(size):
-				//	tv += '%4d' % t[k]
-				//	ts += '%4d' % t[s[k]]
-				//print ts + '    | ' + tv
+				// test results, of this round
+				for (i = 0; i < lenp; i++) {
+					printf("%4u", t[i]);
+				}
+				printf("    | ");
+				for (i = 0; i < lenp; i++) {
+					printf("%4u", t[s[i]]);
+				}
+				printf("\n");
 			}
 		}
 		
 		if (debug == TRUE) {
-			//tv = ''
-			//ts = ''
-			//for k in xrange(size):
-			//	tv += '%4d' % t[k]
-			//	ts += '%4d' % t[s[k]]
-			//print ts + '    | ' + tv
+			// test results
+			for (i = 0; i < lenp; i++) {
+				printf("%4u", t[i]);
+			}
+			printf("    | ");
+			for (i = 0; i < lenp; i++) {
+				printf("%4u", t[s[i]]);
+			}
+			printf("\n");
 		}
 		
 		// failsafe
@@ -984,24 +1066,27 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 
 		// create vertices, edges, facets
 		if (list_type == VERTICES) {
+			// VERTICES
 			// list this vertex, push the rest to the queue (they'll get added on their turn
 			l[lenl*1+0] = ii;
 			lenl ++;
 			for (i = 0; i < lenp; i++) {
 				// push all unvisited points to the queue
-				if (t[i] == TRUE && visited[i] == UNVISITED) {
+				if (t[i] != CONCAVE && visited[i] == UNVISITED) {
 					visited[i] = QUEUED;
 					q[q2++] = i;
 				}
 			}
 		} else if (list_type == EDGES) {
+			// EDGES
 			// list edges
 			for (i = 0; i < lenp; i++) {
 				// if a point has been visited, the line already exisits
-				if (t[i] == TRUE && visited[i] != VISITED) {
+				// if a point is planar, it's line is unnecessary
+				if (t[i] == CONVEX && visited[i] != VISITED) {
 					l[lenl*2+0] = ii;
 					l[lenl*2+1] = i;
-					lenl ++;
+					lenl++;
 					if (visited[i] != QUEUED) {
 						visited[i] = QUEUED;
 						q[q2++] = i;
@@ -1009,6 +1094,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 				}
 			}
 		} else {
+			// FACETS
 			// create a triangle fan of points that pass
 			i1 = 0;
 			while (t[s[i1%lenp]] == CONCAVE) i1++;
@@ -1075,6 +1161,10 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		visited[ii] = VISITED;
 	}
 	
+	if (debug == TRUE && tcount >= lenp) {
+		printf("DEBUG: ConvexHull3D: FAILSAFE ENGAGED\n");
+	}
+	
 	// free everything
 	free(visited);
 	free(q);
@@ -1087,8 +1177,10 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	free(n);
 	
 	// resize, in case of sub-optimal/non-convex set
-	l = (float*) realloc(l, leni*lenl*sizeof(float));
-	leni_p[0] = leni;
-	lenl_p[0] = lenl;
-	return;
+	l = (unsigned int*) realloc(l, leni*lenl*sizeof(unsigned int));
+	*leni_p = leni;
+	*lenl_p = lenl;
+	*l_p = l;
+
+	if (debug == TRUE) 	printf("DEBUG: ConvexHull3D: END\n");
 }
