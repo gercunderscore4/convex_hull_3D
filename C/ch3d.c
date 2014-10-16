@@ -30,6 +30,94 @@
 #define EDGES    1
 #define FACETS   2
 
+#define CONCAVE 0
+#define PLANAR  1
+#define CONVEX  2
+
+/* void CrossProduct(float* a, float* b, float* c)
+ * 
+ * DESCRIPTION:
+ *     Cross product: c = a x b
+ * 
+ * PARAMETERS:
+ *     float*           a        3D vector
+ *     float*           b        3D vector
+ *     float*           c        3D vector, receives result
+ *
+ * RETURNS:
+ *     void
+ * 
+ * NOTE:
+ *     Consider making this inline, due to its small size.
+ */
+void CrossProduct(float* a, float* b, float* c) {
+	c[0] = a[1]*b[2]-a[2]*b[1];
+	c[1] = a[2]*b[0]-a[0]*b[2];
+	c[2] = a[0]*b[1]-a[1]*b[0];
+}
+
+/* float DotProduct(float* a, float* b)
+ * 
+ * DESCRIPTION:
+ *     Dot product: a . b
+ * 
+ * PARAMETERS:
+ *     float*           a        3D vector
+ *     float*           b        3D vector
+ *
+ * RETURNS:
+ *     float                     result
+ * 
+ * NOTE:
+ *     Consider making this inline, due to its small size.
+ */
+float DotProduct(float* a, float* b) {
+	result a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+}
+
+/* void UnitVector(float* u)
+ * 
+ * DESCRIPTION:
+ *     Turns u into a unit vector.
+ * 
+ * PARAMETERS:
+ *     float*           u        3D vector
+ *
+ * RETURNS:
+ *     void
+ * 
+ * NOTE:
+ *     Consider making this inline, due to its small size.
+ */
+void UnitVector(float* u) {
+	float temp;
+	
+	temp = sqrt(u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+	u[0] /= temp;
+	u[1] /= temp;
+	u[2] /= temp;
+}
+
+/* void TripleProduct(float* a, float* b, float* c)
+ * 
+ * DESCRIPTION:
+ *     Triple product: a . (b x c) == b . (c x a) == c . (a x b)
+ * 
+ * PARAMETERS:
+ *     float*           a        3D vector
+ *     float*           b        3D vector
+ *     float*           c        3D vector
+ *
+ * RETURNS:
+ *     float                     result
+ * 
+ * NOTE:
+ *     Consider making this inline, due to its small size.
+ */
+void TripleProduct(float* a, float* b, float* c) {
+	return a[0] * (b[1]*c[2]-b[2]*c[1])  +  a[1] * (b[2]*c[0]-b[0]*c[2])  +  a[2] * (b[0]*c[1]-b[1]*c[0]);
+}
+
 /* void GeneratePoints(float* p, unsigned int size, int convexset)
  * 
  * DESCRIPTION:
@@ -350,48 +438,56 @@ void SortForIndices (float* l1, float* l2, unsigned int* s1, unsigned int* s2, u
 	return s1;
 }
 
-/* int ConvexityTest (float* v, float* v_0, float* v_1, float* v_2)
+/* unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2)
  * 
  * DESCRIPTION:
- *     Checks whether v_1 is above the plane of v_0 and v_2: v_1 . (v_0 x v_2) > 0
- *     If it's in the plane, it checks whether v_1 is farther away from v than the line between v_0 and v_2: 
+ *     Checks whether v1 is above, in, or below the plane of v0 and v2: v1 . (v0 x v2) > 0
+ *     If it's in the plane, it checks whether v1 is farther away from v than the line between v0 and v2: 
  * 
  * IMPORTANT:
  * 
  * PARAMETERS:
  *     float*           v        3D vector, vii - c (if you don't understand that, read the convex hull algorithm)
- *     float*           v_0      3D vector
- *     float*           v_1      3D vector
- *     float*           v_2      3D vector
+ *     float*           v0       3D vector
+ *     float*           v1       3D vector
+ *     float*           v2       3D vector
  *
  * RETURNS:
- *     int                       I'm reconsidering this, a float might work better
+ *     unsigned int              return CONCAVE, PLANAR, or CONVEX
  * 
  * NOTES:
- *     need to check that float* v works for contant length array
+ *     This function is designed for use inside of ConvexHull3D, nowhere else.
  */
-int ConvexityTest (float* v, float* v_0, float* v_1, float* v_2) {
-		float v4[3];
-		float test = 0;
-		
-		// test = (v_0 x v_2) . v_1
-		test = (v_0[1]*v_2[2] - v_0[2]*v_2[1]) * v_1[0] + (v_0[2]*v_2[0] - v_0[0]*v_2[2]) * v_1[1] + (v_0[0]*v_2[1] - v_0[1]*v_2[0]) * v_1[2];
-		
-		// if it's in the same plane as v_0 and v_2
-		// check whether it extends past them
-		if (test == 0) {
-			// v4 = (v_2 - v_0) x v
-			// if v4 . v_1 > v_4 . v_0 (or v_4 . v_2)
-			v4[0] = v_2[0]-v_0[0];
-			v4[1] = v_2[1]-v_0[1];
-			v4[2] = v_2[2]-v_0[2];
-			v4[0] = v4[1]*v[2]-v4[2]*v[1];
-			v4[1] = v4[2]*v[0]-v4[0]*v[2];
-			v4[2] = v4[0]*v[1]-v4[1]*v[0];
-			test = v4[0]*v_1[0] + v4[1]*v_1[1] + v4[2]*v_1[2] > v4[0]*v_0[0] + v4[1]*v_0[1] + v4[2]*v_0[2];
+unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2) {
+	float v4[3];
+	float v5[3];
+	float test;
+	
+	// check whether v_1 is above (+), in (0), or below (-) the plane of v_0 and v_2
+	// test = v1 . (v0 x v2)
+	test = TripleProduct(v1, v0, v2);
+
+	if (test > EPSILON) {
+		// above the plane
+		return CONVEX;
+	} else if (abs(test) <= EPSILON) {
+		// planar
+		// is it farther out than v_0 and v_2 (convex in the plane)?
+		// v4 = v2 - v0
+		// v5 = v4 x v
+		v4[0] = v2[0]-v0[0];
+		v4[1] = v2[1]-v0[1];
+		v4[2] = v2[2]-v0[2];
+		CrossProduct(v4, v, v5);
+		// if v5 . v1 > v5 . v0 (or v5 . v2) then it is convex planar
+		if (DotProduct(v5, v1) > DotProduct(v5, v1)) {
+			return PLANAR;
+		} else {
+			return CONCAVE;
 		}
-		// test MUST be greater than 0, else this is not part of the minimal convex set
-		return test > 0 ? TRUE : FALSE;
+	} else {
+		return CONCAVE;
+	}
 }
 
 /* void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug)
@@ -446,13 +542,17 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	float u0[3] = {0};
 	float u1[3] = {0};
 	float* v = NULL;
+	float* n = NULL;
 	
 	// lists
 	float* theta = NULL;
 	unsigned int* s = NULL;
 	unsigned int* s2 = NULL;
-	int* t = NULL;
+	unsigned int* t = NULL;
 	unsigned int tcount = 0;
+	float* planes = NULL;
+	unsigned int lenn1 = 0;
+	unsigned int lenn2 = 0;
 	
 	// indices
 	unsigned int i = 0;
@@ -466,8 +566,8 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	float tempf = 0;
 	
 	// bools for checks
-	int chk_f = FALSE;
-	int chk_b = FALSE;
+	unsigned int chk1 = 0;
+	unsigned int chk2 = 0;
 	
 	// get lengths
 	lenp = lenp_p[0];
@@ -705,7 +805,8 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	theta = (float*) malloc(lenp*sizeof(float));
 	s  = (unsigned int*) malloc(lenp*sizeof(unsigned int));
 	s2 = (unsigned int*) malloc(lenp*sizeof(unsigned int));
-	t  = (int*) malloc(lenp*sizeof(int));
+	t  = (unsigned int*) malloc(lenp*sizeof(unsigned int));
+	n = (float*) malloc(3*lenp*sizeof(float));
 
 	// list of used variables
 	// calculate approximate centroid and get first point
@@ -746,11 +847,11 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		vii[0] = p[ii*3+0]-c3[0];
 		vii[1] = p[ii*3+1]-c3[1];
 		vii[2] = p[ii*3+2]-c3[2];
-		if (abs(vii[0]) < EPSILON) {
+		if (abs(vii[0]) <= EPSILON) {
 			u0[0] = 1;
 			u0[1] = 0;
 			u0[2] = 0;
-		} else if (abs(vii[1]) < EPSILON) {
+		} else if (abs(vii[1]) <= EPSILON) {
 			u0[1] = 1;
 			u0[1] = 0;
 			u0[2] = 0;
@@ -758,18 +859,15 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 			u0[0] = vii[1];
 			u0[1] = -vii[0];
 			u0[2] = 0;
+			// this verison of UnitVector is slightly more optimized
+			// don't both using the function here
 			tempf = sqrt(u0[0]*u0[0] + u0[1]*u0[1]);
 			u0[0] /= tempf;
 			u0[1] /= tempf;
 		}
 		// u1 = v x u0
-		u1[0] = v[1]*u0[2]-v[2]*u0[1];
-		u1[1] = v[2]*u0[0]-v[0]*u0[2];
-		u1[2] = v[0]*u0[1]-v[1]*u0[0];
-		tempf = sqrt(u1[0]*u1[0] + u1[1]*u1[1] + u1[2]*u1[2]);
-		u1[0] /= tempf;
-		u1[1] /= tempf;
-		u1[2] /= tempf;
+		CrossProduct(v, u0, u1);
+		UnitVector(u1);
 		
 		// create a list of vectors outward from v
 		// calculate their angle around v
@@ -781,19 +879,19 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 			theta[i] = atan2(
 				u1[0]*v3[i][0] + u1[1]*v3[i][1] + u1[2]*v3[i][2],
 				u0[0]*v3[i][0] + u0[1]*v3[i][1] + u0[2]*v3[i][2]);
-			t[i] = TRUE;
+			t[i] = CONVEX;
 		}
 		// create list of indices of sorted theta
 		SortForIndices(&theta, &s, &s1, lenp);
 		// and mark vii as failed
-		t[ii] = FALSE;
+		t[ii] = CONCAVE;
 		
 		// tcount is a failsafe
 		// it counts the number of failures
 		// if tcount >= lenp, there will be an infinite loop
 		// therefore break, and skip to the end
 		tcount = 1;
-						
+					
 		if (debug == TRUE) {
 			//tv = ''
 			//ts = ''
@@ -811,21 +909,21 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		// 	i_curr = i1
 		// 	i_next = i2
 		i0 = -1;
-		while (t[s[i0]] == FALSE) i0--;
+		while (t[s[i0]] == CONCAVE) i0--;
 		i9 = i0-1;
-		while (t[s[i9]] == FALSE) i9--;
+		while (t[s[i9]] == CONCAVE) i9--;
 		i1 = 0;
-		while (t[s[i1]] == FALSE) i1++;
+		while (t[s[i1]] == CONCAVE) i1++;
 		i2 = i1+1
-		while (t[s[i2]] == FALSE) i2++;
+		while (t[s[i2]] == CONCAVE) i2++;
 		// go through the whole list once
 		// check forward and backward at each failure
 		// (until success in both directions)
 		while (i1 < lenp) {
 			// test v_1
-			t[s[i1]] = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3])
+			t[s[i1]] = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
 
-			if (t[s[i1%lenp]] == FALSE) {
+			if (t[s[i1%lenp]] == CONCAVE) {
 				// failsafe
 				tcount++;
 				if (tcount >= lenp) {
@@ -837,16 +935,16 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 				// increment forward
 				i1 = i2;
 				i2++;
-				while (t[s[i2%lenp]] == FALSE) i2++;
+				while (t[s[i2%lenp]] == CONCAVE) i2++;
 
 				// check forward and backward until coast is clear
-				chk_f = FALSE;
-				chk_b = FALSE;
-				while (chk_f == FALSE || chk_b == FALSE) {
+				chk1 = CONCAVE;
+				chk2 = CONCAVE;
+				while (chk1 == CONCAVE || chk2 == CONCAVE) {
 					// check backward
-					chk_b = ConvexityTest(&vii[0], &v[s[i9%lenp]*3], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3]);
-					if (chk_b == FALSE) {
-						t[s[i0%lenp]] = FALSE;
+					chk1 = ConvexityTest(&vii[0], &v[s[i9%lenp]*3], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3]);
+					if (chk1 == CONCAVE) {
+						t[s[i0%lenp]] = CONCAVE;
 						// failsafe
 						tcount++;
 						if (tcount >= lenp) {
@@ -856,11 +954,11 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 						}
 						i0 = i9;
 						i9--;
-						while (t[s[i9%lenp]] == FALSE) i9--;
+						while (t[s[i9%lenp]] == CONCAVE) i9--;
 					// check forward
-					chk_f = ConvexityTest(&vii[0], &v[s[i0%lenp]], &v[s[i1%lenp]], &v[s[i2%lenp]]);
-					if (chk_f == FALSE) {
-						t[s[i1%lenp]] = FALSE;
+					chk2 = ConvexityTest(&vii[0], &v[s[i0%lenp]*3], &v[s[i1%lenp]*3], &v[s[i2%lenp]*3]);
+					if (chk2 == CONCAVE) {
+						t[s[i1%lenp]] = CONCAVE;
 						// failsafe
 						tcount++;
 						if (tcount >= lenp) {
@@ -870,7 +968,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 						}
 						i1 = i2;
 						i2++;
-						while (t[s[i2%lenp]] == FALSE) i2++;
+						while (t[s[i2%lenp]] == CONCAVE) i2++;
 					}
 				}
 				// concavity removed
@@ -880,7 +978,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 				i0 = i1;
 				i1 = i2;
 				i2++;
-				while (t[s[i2%lenp]] == FALSE) i2++;
+				while (t[s[i2%lenp]] == CONCAVE) i2++;
 			}
 			if (debug == TRUE) {
 				//tv = ''
@@ -936,31 +1034,68 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 		} else {
 			// create a triangle fan of points that pass
 			i1 = 0;
-			while (t[s[i1%lenp]] == FALSE) i1++;
+			while (t[s[i1%lenp]] == CONCAVE) i1++;
 			i2 = i1+1
-			while (t[s[i2%lenp]] == FALSE) i2++;
+			while (t[s[i2%lenp]] == CONCAVE) i2++;
 			while (i1 < lenp) {
 				// if a triangle contains a visited point, it's already in the list
 				if (visited[s[i1%lenp]] != VISITED && visited[s[i2%lenp]] != VISITED) {
-					l[lenl*3+0] = ii;
-					l[lenl*3+1] = s[i1%lenp];
-					l[lenl*3+2] = s[i2%lenp];
-					lenl++;
-					if (visited[s[i1%lenp]] != QUEUED) {
-						visited[s[i1%lenp]] = QUEUED;
-						q[q2++] = s[i1%lenp];
+					// if planar, confirm that the normal is not yet disallowed
+					chk1 = TRUE;
+					if (t[s[i1%lenp]] == PLANAR || t[s[i2%lenp]] == PLANAR) {
+						CrossProduct(v[s[i1%lenp]], v[s[i1%lenp]], u0);
+						UnitVector(u0);
+						for (i = 0; i < lenn1; i++) {
+							if (abs(u0[0]-n[i*3+0]) <= EPSILON && 
+							    abs(u0[1]-n[i*3+1]) <= EPSILON && 
+							    abs(u0[2]-n[i*3+2]) <= EPSILON) {
+							    chk1 = FALSE;
+							    break;
+							}
+						}
+						// if planar, but normal not disallowed
+						// add point, and check if normal is listed
+						// if not, add it
+						chk2 = FALSE;
+						for (i = lenn1; i < lenn2; i++) {
+							if (abs(u0[0]-n[i*3+0]) <= EPSILON && 
+							    abs(u0[1]-n[i*3+1]) <= EPSILON && 
+							    abs(u0[2]-n[i*3+2]) <= EPSILON) {
+							    chk2 = TRUE;
+							    break;
+							}
+						}
+						if (chk2 == FALSE) {
+							n[lenn2*3+0] = u0[0];
+							n[lenn2*3+1] = u0[1];
+							n[lenn2*3+2] = u0[2];
+							lenn2++;
+						}
 					}
-					if (visited[s[i2%lenp]] != QUEUED) {
-						visited[s[i2%lenp]] = QUEUED;
-						q[q2++] = s[i2%lenp];
+					if (chk1 == TRUE) {
+						l[lenl*3+0] = ii;
+						l[lenl*3+1] = s[i1%lenp];
+						l[lenl*3+2] = s[i2%lenp];
+						lenl++;
+						if (visited[s[i1%lenp]] != QUEUED) {
+							visited[s[i1%lenp]] = QUEUED;
+							q[q2++] = s[i1%lenp];
+						}
+						if (visited[s[i2%lenp]] != QUEUED) {
+							visited[s[i2%lenp]] = QUEUED;
+							q[q2++] = s[i2%lenp];
+						}
 					}
 				}
 				i1 = i2;
 				i2++;
-				while (t[s[i2%lenp]] == FALSE) i2++;
+				while (t[s[i2%lenp]] == CONCAVE) i2++;
 			}
 		}
-		visited[ii] = VISITED; // now mark point as off limits
+		// make any new normals off limits
+		lenn1 = lenn2;
+		// mark point as off limits
+		visited[ii] = VISITED;
 	}
 	
 	// free everything
@@ -972,6 +1107,7 @@ void ConvexHull3D(float* p, unsigned int* lenp_p, float* l, unsigned int* lenl_p
 	free(s);
 	free(s2);
 	free(t);
+	free(n);
 	
 	// resize, in case of sub-optimal/non-convex set
 	l = (float*) realloc(leni*lenl*sizeof(float));
