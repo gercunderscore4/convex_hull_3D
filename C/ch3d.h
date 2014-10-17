@@ -4,9 +4,7 @@
  * DATE:    2014-10-16 - 
  * NOTES:   Time: O(n^2*log(n))    Algorithm requires sort(n) for each n, hence n*n*log(n).
  *          Space: O(n)
- *          Untested.
- * TO DO:   Write 2D convex hull for planar case.
- *          Test.
+ * TO DO:   
  */
 
 #ifndef CH3D_H_
@@ -17,9 +15,11 @@
 #include <math.h>
 #include <time.h>
 
+//#define DEBUG
+
 #define PI 3.14159
 
-#define EPSILON 1e-6
+#define EPSILON 1e-3
 
 #define TRUE  1
 #define FALSE 0
@@ -212,7 +212,7 @@ void RemoveRepetitions (float** p_p, unsigned int* lenp_p);
  */
 void SortForIndices (float* l1, unsigned int* s1, unsigned int* s2, unsigned int size);
 
-/* unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2)
+/* unsigned int ConvexityTest2D(float* v, float* v0, float* v1, float* v2)
  * 
  * DESCRIPTION:
  *     Checks whether v1 is above, in, or below the plane of v0 and v2: v1 . (v0 x v2) > 0
@@ -233,9 +233,78 @@ void SortForIndices (float* l1, unsigned int* s1, unsigned int* s2, unsigned int
  * NOTES:
  *     This function is designed for use inside of ConvexHull3D, nowhere else.
  */
-unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2);
+unsigned int ConvexityTest2D(float* v, float* v0, float* v1, float* v2);
 
-/* void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug)
+/* unsigned int ConvexityTest3D(float* v, float* v0, float* v1, float* v2)
+ * 
+ * DESCRIPTION:
+ *     Checks whether v1 is above, in, or below the plane of v0 and v2: v1 . (v0 x v2) > 0
+ *     If it's in the plane, it checks whether v1 is farther away from v than the line between v0 and v2: 
+ * 
+ * PARAMETERS:
+ *     float*           v        3D vector, vii - c (if you don't understand that, read the convex hull algorithm)
+ * 
+ *     float*           v0       3D vector
+ * 
+ *     float*           v1       3D vector
+ * 
+ *     float*           v2       3D vector
+ *
+ * RETURNS:
+ *     unsigned int              return CONCAVE, PLANAR, or CONVEX
+ * 
+ * NOTES:
+ *     This function is designed for use inside of ConvexHull3D, nowhere else.
+ */
+unsigned int ConvexityTest3D(float* v, float* v0, float* v1, float* v2);
+
+/* unsigned int LinearCheck(float* p, unsigned int lenp);
+ * 
+ * DESCRIPTION:
+ *     Checks whether points in p are all in one line
+ *     Must have at least 3 points.
+ * 
+ * IMPORTANT:
+ *     assumes RemoveRepetitions already run
+ * 
+ * PARAMETERS:
+ *     float*           p        array of points
+ * 
+ *     unsigned int     lenp     number of points
+ *
+ * RETURNS:
+ *     unsigned int              TRUE if, then linear, else FALSE
+ */
+unsigned int LinearCheck(float* p, unsigned int lenp);
+
+/* unsigned int PlanarCheck(float* p, unsigned int lenp);
+ * 
+ * DESCRIPTION:
+ *     Checks whether points in p are all in one line
+ *     Must have at least 4 points.
+ * 
+ * IMPORTANT:
+ *     assumes RemoveRepetitions already run
+ * 
+ * PARAMETERS:
+ *     float*           p        array of points
+ * 
+ *     unsigned int     lenp     number of points
+ *
+ * RETURNS:
+ *     unsigned int              TRUE if, then linear, else FALSE
+ */
+unsigned int PlanarCheck(float* p, unsigned int lenp);
+
+void BuildPoint(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildLine(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildLinear(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildTriangle(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildPlanar(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildTetrahedron(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+void BuildHull(float* p, unsigned int lenp, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
+
+/* void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type)
  * 
  * DESCRIPTION:
  *     Removes repeated points from p.
@@ -267,6 +336,6 @@ unsigned int ConvexityTest (float* v, float* v0, float* v1, float* v2);
  * RETURNS:
  *     void
  */
-void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type, int debug);
+void ConvexHull3D(float** p_p, unsigned int* lenp_p, unsigned int** l_p, unsigned int* lenl_p, unsigned int* leni_p, int list_type);
 
 #endif /* CH3D_H_ */
