@@ -12,7 +12,7 @@ Space complexity: O(n)
 Most algorithms I've come across have been very complicated, this one seems pretty simple, I thought it up myself.
 
 
-Implemented in MATLAB/Octave and Python (2.7), C/C++.
+Implemented in MATLAB/Octave, Python (2.7), andC/C++.
 
 TODO:
 - Test and debugging (3D graphics in MATLAB and Python have depth problems, so I need CPP).
