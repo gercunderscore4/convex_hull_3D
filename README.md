@@ -1,9 +1,11 @@
 convex_hull_3D
 ==============
 
-+3D convex hull algorithm
-+Time complexity:  O(n^2*log(n))    Requires sort(n) for every n, in every non-trivial case.
-+Space complexity: O(n)
+3D convex hull algorithm
+
+Time complexity:  O(n^2*log(n))    Requires sort(n) for every n, in every non-trivial case.
+
+Space complexity: O(n)
 
 Most algorithms I've come across have been very complicated, this one seems pretty simple, I thought it up myself.
 
